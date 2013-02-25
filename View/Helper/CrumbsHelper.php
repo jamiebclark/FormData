@@ -1,5 +1,5 @@
 <?php
-App::uses('InflectorPlus', 'Utilities');
+App::uses('InflectorPlus', 'Utilities');App::uses('Prefix', 'Utilities');
 
 class CrumbsHelper extends AppHelper {
 	var $name = 'Crumbs';
