@@ -1,7 +1,6 @@
 <?php
-App::uses('InflectorPlus', 'Utilities');App::uses('Prefix', 'Utilities');
-
-class CrumbsHelper extends AppHelper {
+App::uses('InflectorPlus', 'Layout.Lib');App::uses('Prefix', 'Layout.Lib');
+class CrumbsHelper extends AppHelper {
 	var $name = 'Crumbs';
 	var $helpers = array('Html', 'Iconic',);
 	
@@ -37,7 +36,7 @@ class CrumbsHelper extends AppHelper {
 			if (isset($settings[$type . 'Crumbs'])) {
 				$vars[$type] = $settings[$type . 'Crumbs'];
 				unset($settings[$type . 'Crumbs']);
-			}
+			} 
 		}
 		$this->_set($settings);
 		foreach ($vars as $type => $vars) {
@@ -45,7 +44,7 @@ class CrumbsHelper extends AppHelper {
 		}
 		
 		$this->addVars($settings);
-
+		debug(Prefix::removeFromAction('staff', 'staff_admin'));
 	}
 	
 	function add($title, $link = null, $options = null) {
