@@ -1,0 +1,56 @@
+/*Layout Colors*/
+$blue:#00b6de;
+$light-blue:#60cae4;
+$yellow:#ffd204;
+$orange:#f26532;
+
+$green:#C1D72D;//b2bb1c;
+$light-green:#c1d72e;
+
+$brown:#e0c298;
+$light-brown:#e0c298;
+
+
+$color1:$orange;
+$color2:$blue;
+$color3:$green;
+$color4:$yellow;
+
+$color1-light:#f7ded5; //lighten($color1, 40%);
+$color2-light:#F1FBFF; //#cbecf3; 
+$color3-light:#eef2d4; //lighten($color3, 40%);
+$color4-light:#f7efcc; //lighten($color4, 40%);
+//desaturate(lighten($color2, 50%),80%);
+
+$title-color1:$orange;
+$title-color2:$blue;
+$title-color3:#666;
+$title-color4:#AAA;
+
+$link-color1:darken($blue, 20%);
+$link-color2:$orange;
+$link-color3:$yellow;
+
+$text-color:#444;
+
+$bg-color1:lighten($color1, 40%);
+$bg-color2:lighten($color2, 50%);
+$bg-color3:lighten($color3, 40%);
+$bg-color4:lighten($color4, 40%);
+
+$highlight-color1:$blue;
+
+$positive-bg: green;
+$positive-border: green;
+$warning-bg: yellow;
+$warning-border: yellow;
+$error-bg: red;
+$error-border: red;
+
+
+@mixin link-color($color) {
+	color:$color;
+	&:hover {
+		color:darken($color, 10%);
+	}
+}
