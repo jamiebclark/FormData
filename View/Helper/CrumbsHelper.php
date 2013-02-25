@@ -44,7 +44,6 @@ App::uses('InflectorPlus', 'Layout.Lib');App::uses('Prefix', 'Layout.Lib');
 		}
 		
 		$this->addVars($settings);
-		debug(Prefix::removeFromAction('staff', 'staff_admin'));
 	}
 	
 	function add($title, $link = null, $options = null) {
