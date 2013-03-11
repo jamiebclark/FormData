@@ -1,8 +1,10 @@
 <?php
 /**
- * Layout Helper outputs some basic Html objects that help form a better organized view
- *
- **/
+* Layout Helper outputs some basic Html objects that help form a better organized view
+*
+*/
+
+App::uses('Param', 'Lib');
  
 class LayoutHelper extends AppHelper {
 	var $helpers = array(
