@@ -4,7 +4,8 @@
 *
 */
 
-App::uses('Param', 'Lib');
+App::uses('Param', 'Layout.Lib');
+App::uses('InflectorPlus', 'Layout.Lib');
  
 class LayoutHelper extends AppHelper {
 	var $helpers = array(
@@ -239,7 +240,7 @@ class LayoutHelper extends AppHelper {
 		$defaultAttrs = array(
 			'id' => $modelId,
 			//'menu' => array(),
-			'model' => $human = InflectorPlus::modelize($this->request->params['controller']),
+			'model' => $human = Inflector::classify($this->request->params['controller']),
 		);
 		$attrs = array_merge($defaultAttrs, $attrs);
 		extract($attrs);
