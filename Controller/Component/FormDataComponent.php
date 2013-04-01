@@ -53,7 +53,11 @@ class FormDataComponent extends Component {
 		if (method_exists($this, $model)) {
 			$Model =& $this->controller->{$model};
 		} else {
-			App::import('Model', $model);
+			$importModel = $model;
+			if (!empty($this->settings['plugin'])) {
+				$importModel = $this->settings['plugin'] . '.' . $model;
+			}
+			App::import('Model', $importModel);
 			$Model = new $model();
 		}
 		
