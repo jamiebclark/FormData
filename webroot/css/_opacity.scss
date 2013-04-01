@@ -1,6 +1,0 @@
-// Pass an opacity value between 0.0 and 1.0
-@mixin opacity($opacity) {
-  opacity: $opacity;
-  filter alpha(opacity=#{$opacity * 100});
-  filter: unquote("progid:DXImageTransform.Microsoft.Alpha(Opacity=#{round($opacity * 100)})");
-}
