@@ -1,0 +1,68 @@
+form {
+	.table-cell-edit {
+		label {
+			display: none;
+		}
+		input, select {
+			width: 100%;
+			margin: 0;
+			float: none;
+			font-size: 85%;
+		}
+	}
+	.buttons {
+		padding: 0 !important;
+	}
+}
+$tableSortBgColor: #EEE;
+$tableSortBorderColor: #CCC;
+
+$tableSortRounded: .25em;
+
+.table-sort-links {
+	position: relative;
+	z-index: 500;
+	float: left;
+	margin-top: 1px;
+	.sort-select {
+		padding: 5px;
+		padding-bottom: 4px;
+		border: 1px solid white;
+		position: relative;
+		z-index: 1000;
+		&.hover {
+			@include rounded-top($tableSortRounded);
+			background-color: $tableSortBgColor;
+			border-color: $tableSortBorderColor;
+			border-bottom: 0;
+		}
+	}
+	
+	.table-sort {
+		padding: 5px 2px;
+		border: 1px solid $tableSortBorderColor;
+		
+		@include rounded-bottom($tableSortRounded);
+		@include rounded(top-right, $tableSortRounded);
+		background-color: $tableSortBgColor;
+		position: absolute;
+		@include box-shadow();
+		
+		a {
+			padding-right: 5px;
+			display: block;
+			font-weight: normal;
+			font-size: 10px;
+			
+			@include rounded-all(2px);
+			
+			&:hover {
+				background-color: white;
+			}
+			&.selected {
+				background-color: white;
+				font-weight: bold;
+			}
+		}
+	}
+}

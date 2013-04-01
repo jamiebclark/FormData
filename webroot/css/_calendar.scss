@@ -1,0 +1,503 @@
+@import "lists";
+@import "clearfix";
+@import "colors";
+@import "gradient";
+@import "rounded";
+@import "overflow-fix";
+
+.calendar-date-box-wrap {
+	position: relative;
+	float: left;
+	left: 50%;
+	.calendar-date-box {
+		position: relative;
+		float: left;
+		left: -50%;
+	}
+}
+.calendar-date-box {
+	float: left;
+	margin: 1em 0;
+	width: 130px;
+	@include rounded-all(4px);
+	
+	.month, .day, .year {
+		text-align: center;
+		font-weight: 700;
+		float: left;
+		width: 100%;
+		clear: both;
+	}
+	.month, .day {
+		border: 1px solid #CCC;
+	}
+	.month {
+		background-color: $color1;
+		border-bottom: 0;
+		color: white;
+
+		line-height: 40px;
+		font-size: 30px;
+		&.multi {
+			font-size: 20px;
+		}
+	}
+	.day {
+		@include gradient-vertical(#FFF, #EEE);
+		border-top: 0;
+
+		line-height: 90px;
+		font-size: 80px;
+		&.multi {
+			font-size: 40px;
+		}
+	}
+	.year {
+		font-size: 20px;
+		line-height: 30px;
+	}
+	
+	span {
+		float: left;
+		display: block;
+		text-align: center;
+		width: 50%;
+	}
+	&.small {
+		width: 60px;
+		.month {
+			line-height: 20px;
+			font-size: 14px;
+		}
+		.day {
+			line-height: 40px;
+			font-size: 25px;
+			.multi {
+				font-size: 20px;
+			}
+		}
+		.year {
+			font-size: 12px;
+			line-height: 20px;
+		}
+	}
+}
+a:hover {
+	.calendar-date-box {
+		.day, .month {
+			border-color: $color2;
+		}
+	}
+}
+
+$dayFontSize: 1em;
+$dayHeight: 2 * $dayFontSize;
+$dayWidth: 2 * $dayFontSize;
+
+.weekLinks {
+	margin: .5em 0 .5em;
+	&, .days a {
+		text-decoration: none;
+		clear: both;
+	}
+	.days {
+		a {
+			@include clearfix;
+			display: block;
+			@include rounded-all(1em);
+			
+			&:hover {
+				background-color: $color1 !important;
+				font {
+					color: white;
+				}
+			}
+			
+			&.current {
+				background-color: $color3-light;
+				font {
+					font-weight: bold!important;
+				}
+			}
+		}
+		font {
+			display: block;
+			float: left;
+			width: $dayWidth;
+			line-height: $dayHeight;
+			font-size: $dayFontSize;
+			font-weight: normal;
+			color: #666;
+			text-align: center;
+			background: transparent;
+		}
+	}
+
+	.head, .week {
+		clear: both;
+		line-height: $dayHeight;
+		margin: 0 auto;
+		width: 7 * $dayWidth;
+	}
+	.head {
+		text-align: center;
+		font-size: $dayFontSize;
+		font-weight: bold;
+		background-color: $color3;
+		height: $dayHeight;
+		color: white;
+		position: relative;
+		
+		.nav {
+			display: block;
+			line-height: $dayHeight;
+			width: $dayWidth;
+			text-align: center;
+
+			font-weight: bold !important;
+			color: white;
+			background-color: transparent;
+			
+			&:hover {
+				color: $color3;
+				background-color: white;
+				text-decoration: none;
+			}
+		}
+		.next, .prev {
+			position: absolute;
+			top: 0;
+		}
+		.next {
+			right: 0;
+		}
+		.prev {
+			left: 0;
+		}
+		.monthNav {
+			font-size: $dayFontSize;
+			font-weight: bold;
+			color: white;
+			text-decoration: none;
+			&:hover {
+				color: orange;
+			}
+		}
+	}
+}
+
+.dateBox {
+	float: left;
+	width: 20px!important;
+	border: 1px solid black;
+	background-color: #4B71A3;
+	padding: 2px;
+	padding-top: 0;
+	margin-bottom: 5px;
+	font, span {
+		text-align: center;
+		display: block;
+		font-weight: bold;
+	}
+	font {
+		line-height: 15px;
+		font-size: 10px;
+		color: white;
+	}
+	span {
+		line-height: 20px;
+		background-color: white;
+		font-size: 15px;
+		color: black;
+	}
+}
+	
+.eventsList {
+	&, ul, li {
+		margin: 0;
+		padding: 0;
+		list-style-type: none;
+		display: block;
+		clear: both;
+	}
+	li {
+		float: left;
+		width: 100%;
+		li {
+			border-bottom: 1px solid #EEE;
+			padding: 5px 0 9px 30px;
+			float: none;
+			width: auto;
+		}
+	}
+	div.liBody {
+		margin: 0;
+		padding: 4px 10px 5px 0;
+	}
+	a {
+		font-weight: normal;
+	}
+	.date {
+		float: left;
+		clear: left;
+		width: 30px;
+		padding-bottom: 10px;
+		margin-left: 5px;
+		
+		@include overflow-fix;
+		
+		.day {
+			display: block;
+			text-align: center;
+			font-size: 10px;
+			line-height: 10px;
+			font-weight: bold;
+		}
+	}
+	.dscr {
+		margin-left: 40px;
+		li {
+			padding-bottom: 5px;
+		}
+		li, font {
+			font-size: 11px;
+		}
+		li, ul {
+			float: none;
+			clear: none;
+			width: auto;
+		}
+	}
+	p {
+		margin: 0;
+		padding: 10px;
+	}
+	.imgList20  li {
+		//margin-left: 10px;
+		//margin-right: 10px;
+		margin: 0;
+	}
+	.dateFooter {
+		font-size: 10px;
+		line-height: 10px;
+		color: #CCC;
+	}
+	&.side {
+		.date {
+			float: none;
+			width: 100%;
+			padding: 0;
+			margin: 0;
+			text-align: right;
+
+			.day, .dateBox span, .dateBox font {
+				display: inline;
+				padding: 0;
+				margin: 0;
+				margin-right: 5px;
+				font-size: 12px;
+				background-color: transparent;
+				color: #CCC;
+			}
+			.dateBox {
+				width: auto;
+				float: left;
+				border: 0;
+				background-color: transparent;
+			}
+		}
+		.dscr {
+			margin: 0;
+		}
+	}
+}
+
+.eventMonth {
+	tr.sel td {
+		background-color: #E5ECF9;
+	}
+	td.sel {
+		background-color: #CFDEF7!important;
+	}
+	td.today {
+		background-color: #FFE9BA!important;
+	}
+}
+.eventWeek {
+	ul, li.eventDay {
+		list-style-type: none;
+		padding: 0;
+		margin: 0;
+	}	
+	li .eventDay {
+		margin-bottom: 10px;
+	}
+}
+.eventDay {
+	border: 1px solid #EFEFEF;
+	padding: 9px;
+	.eventDayItem {
+		margin-bottom: 10px;
+	}
+}
+
+$calBoxW: 2em;
+
+.eventBox {
+	table {
+		margin: 0 auto;
+		width: auto;
+	}
+	th, td {
+		padding: 0;
+		height: $calBoxW;
+		width: $calBoxW;
+		text-align: center;
+		font-size: 11px;
+	}
+	td {
+		a {
+			display: block;
+			line-height: $calBoxW;
+			text-decoration: none;
+			font-weight: bold;
+			color: #333;
+			background-color: #EFFBFC;
+			&:hover {
+				text-decoration: underline;
+			}
+			&.e {
+				font-weight: normal;
+				background-color: transparent;
+			}
+		}
+		&.n {
+			color: #CCC;			
+			a {
+				color: #CCC;
+			}
+		}
+	}
+	.week {
+		border-right: 1px solid #CCC;
+		a {
+			font-weight: normal;
+			color: #CCC;
+			background-color: transparent;
+		}
+	}
+	.preview {
+		display: none;
+		position: absolute;
+		background-color: white;
+		border: 1px solid #666;
+		z-index: 999;
+		width: 120px;
+		color: #666;
+		ul, li {
+			@include reset-list;
+		}
+		li {
+			font-size: 10px;
+			line-height: 15px;
+			padding: 4px;
+			border-bottom: #CCC;
+			text-align: left;
+		}
+		a {
+			display: inline;
+			background-color: transparent;
+		}
+	}
+
+}
+	
+.eventMain {
+	td, th, table {
+		border: 1px solid #EEE;
+	}
+	table {
+		width: 100%;
+		border-right: 0;
+		border-bottom: 0;
+	}
+	td, th {
+		vertical-align: top;
+		padding: 0;
+		background-color: #FFF;
+		border-top: 0;
+		border-left: 0;
+		width: 14%;
+	}
+	td {
+		.day {
+			min-height: 120px;
+			a {
+				text-decoration: none;
+				font-weight: normal;
+				&:hover {
+					text-decoration: underline;
+				}
+			}
+		}
+		.d {
+			display: block;
+			text-align: right;
+			font-size: 9px;
+			background-color: #E5ECF9;
+			padding: 0 4px;
+		}
+		&.n {
+			background-color: #EAF2FF;
+		}
+		ul, li {
+			@include reset-list;
+		}
+		li {
+			margin-bottom: 1px;
+			font-size: 11px;
+			padding: 5px;
+			text-align: left;
+		}
+	}
+	th {
+		text-align: center;
+		font-size: 9px;
+	}
+}
+
+.input-date-range {
+	div {
+		float: left;
+		line-height: 30px;
+		margin-right: 5px;
+		padding: 5px;
+		&.spacer {
+			font-weight: bold;
+			font-size: 20px;
+		}
+		&.input-date-range-radios {
+			border: 1px solid #f8f8f8;
+			padding: 4px;
+		}
+	}
+}
+
+.deadline {
+	font-weight: normal;
+}
+.deadline-complete {
+	text-decoration: line-through;
+	color: #CCC;
+}
+.deadline-upcoming {
+	//font-weight: bold;
+	color: orange;
+}
+.deadline-past {
+	//font-weight: bold;
+	color: red;
+}
+.deadline-far {
+	color: #999;
+}
