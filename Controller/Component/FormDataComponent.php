@@ -43,7 +43,6 @@ class FormDataComponent extends Component {
 			$defaults = $this->controller->_setFindModelAttrs($defaults);
 		}
 		$attrs = array_merge($defaults, $attrs);
-		
 		if (!empty($attrs['options'])) {
 			$options = array_merge($options, $attrs['options']);
 			unset($attrs['options']);
@@ -138,7 +137,6 @@ class FormDataComponent extends Component {
 		$options1 = $this->_prepareOptions($options1);
 		$options2 = $this->_prepareOptions($options2);
 		$return = array_merge($options1, $options2);
-		debug(compact('options1', 'options2', 'return'));
 		return $return;
 	}
 	
