@@ -1,7 +1,7 @@
 <?php
 class FormDataComponent extends Component {
 	var $name = 'FormData';
-	var $components = array();
+	var $components = array('Session');
 	
 	var $controller;
 	var $settings = array();
@@ -64,7 +64,7 @@ class FormDataComponent extends Component {
 			$options = array();
 		}
 		if (!empty($id) || empty($options['conditions'])) {
-			if (!is_numeric($id) && ($slugField = $this->__isSluggable($Model))) {
+			if (!is_numeric($id) && ($slugField = $this->_isSluggable($Model))) {
 				//Searches by slug
 				$conditions = array($Model->alias . '.' . $slugField . ' LIKE' => $id);
 			} else {
@@ -126,52 +126,22 @@ class FormDataComponent extends Component {
 
 			$message .= '<br/>' . Router::url($redirect);
 			
-			$this->controller->Session->setFlash($message);
+			$this->flash($message, 'error');
 			$this->controller->redirect($redirect);
 		}
 		$this->controller->set($varName, $result);
 		return $result;
 	}
 
-	function mergeOptions($options1 = array(), $options2 = array()) {
-		$options1 = $this->_prepareOptions($options1);
-		$options2 = $this->_prepareOptions($options2);
-		$return = array_merge($options1, $options2);
-		return $return;
-	}
 	
-	function _prepareOptions($options) {
-		$numericKeys = array('link', 'contain');
-		foreach ($numericKeys as $field) {
-			if (isset($options[$field])) {
-				$options[$field] = $this->_numericKeysFix($options[$field]);
-			}
-		}
-		foreach ($options as $key => $val) {
-			if (!empty($val) && !is_array($val)) {
-				$options[$key] = array($val);
-			}
-		}
-		return $options;
-	}
-	
-	function _numericKeysFix($array = array()) {
-		if (!is_array($array)) {
-			$array = array($array);
-		}
-		$return = array();
-		foreach ($array as $key => $val) {
-			if (is_array($val)) {
-				$return[$val] = $this->_numericKeysFix($val);
-			} else if (is_numeric($key)) {
-				$return[$val] = array();
-			} else {
-				$return[$key] = $val;
-			}
-		}
-		return $return;
-	}
-	
+	/**
+	 * Saves new request data
+	 *
+	 * @param array $options addData options, including default values to be passed to the form
+	 * @param array $saveAttrs FormData->saveData options
+	 * @param array $saveOptions Model->save options
+	 * @return array Model result
+	 */
 	function addData($options = array(), $saveAttrs = array(), $saveOptions = array()) {
 		$result = $this->saveData(null, $saveAttrs, $saveOptions);
 		if ($result === null && !empty($options['default'])) {
@@ -181,11 +151,22 @@ class FormDataComponent extends Component {
 		return $result;
 	}
 	
-	function editData($id, $findAttrs = array(), $findOptions = array(), $saveAttrs = array(), $saveOptions = array()) {
+	/**
+	 * Saves request data based on an existing model id. 
+	 * Regardless of whether it saves anything, it will still find and store the model id result
+	 *
+	 * @param int $id The id of the model being saved
+	 * @param array $findAttrs FormData->findModel options
+	 * @param array $findOptions Model->find options
+	 * @param array $saveAttrs FormData->saveData options
+	 * @param array $saveOptions Model->save options
+	 * @return array Model result
+	 **/
+	function editData($id, $findAttrs=array(), $findOptions=array(), $saveAttrs=array(), $saveOptions=array()) {
 		$result = $this->saveData(null, $saveAttrs, $saveOptions);
 		if ($result === null) {
-			$this->controller->request->data = $this->findModel($id, $findAttrs, $findOptions);
-			//debug($this->controller->request->data);
+			$result = $this->findModel($id, $findAttrs, $findOptions);
+			$this->controller->request->data = $result;
 		} else {
 			$this->findModel($this->controller->request->data[$this->settings['model']]['id'], $findAttrs, $findOptions);
 		}
@@ -197,6 +178,10 @@ class FormDataComponent extends Component {
 	 * Handles the basic code appearing at the top of any add or edit controller function
 	 * returns true if successfully saved, false if failed at saving, null if no data is detected
 	 * 
+	 * @param string/null $model Model to save. Uses controller model if null
+	 * @param array $passedOptions FormData-specific options
+	 * @param array $saveOptions Model save options
+	 * @return bool/null True if success, false if failed, null if no data present
 	 **/
 	function saveData($model = null, $passedOptions = array(), $saveOptions = array()) {
 		if (!empty($this->controller)) {
@@ -265,7 +250,7 @@ class FormDataComponent extends Component {
 					//debug($Model->invalidFields());
 				}
 				if (!empty($use['message'])) {
-					$this->__setFlash($use['message']);
+					$this->flash($use['message'], $result ? 'success' : 'error');
 				}
 				
 				if (!empty($use['redirect'])) {
@@ -297,7 +282,7 @@ class FormDataComponent extends Component {
 				return false;
 			}
 		}
-		if (($data = $this->__checkCaptcha($data)) === false) {
+		if (($data = $this->_checkCaptcha($data)) === false) {
 			$this->_log('CheckCaptcha Failed');
 			$this->_log($data);
 			return false;
@@ -342,7 +327,7 @@ class FormDataComponent extends Component {
 			echo round($success);
 		} else {
 			$msg = $success ? 'Deleted ' . $modelHuman . ' info' : 'Could not delete ' . $modelHuman . ' info';
-			$this->controller->Session->setFlash(__($msg));
+			$this->flash($msg, $success);
 			if (!empty($redirect)) {
 				$this->controller->redirect($redirect);
 			}
@@ -353,7 +338,6 @@ class FormDataComponent extends Component {
 		$referer = Router::parse($this->controller->referer(null, true));
 		$options = !empty($this->settings['refererRedirect']) ? $this->settings['refererRedirect'] : null;
 		$checkKeys = array('controller', 'action');
-		
 		$match = true;
 		foreach ($checkKeys as $checkKey) {
 			$field = 'redirect' . ucfirst($checkKey);
@@ -369,15 +353,12 @@ class FormDataComponent extends Component {
 	}
 	
 	function setData($setData = array(), $reset = false) {
-		
 		$data =& $this->controller->request->data;
-		
 		if (!$reset && !empty($data)) {
 			$data = $this->array_merge_data($data, $setData);
 		} else {
 			$data = $setData;
 		}
-		
 		return true;
 	}
 	
@@ -402,13 +383,27 @@ class FormDataComponent extends Component {
 		$this->setRefererRedirect();
 	}
 	
-	function __setFlash($msg) {
-		$this->controller->Session->setFlash(__($msg));
+	private function flash($msg, $type = 'info') {
+		if ($type === true) {
+			$type = 'success';
+		} else if ($type === false) {
+			$type = 'error';
+		}
+		$this->Session->setFlash(__($msg), 'alert', array(
+			'plugin' => 'FormData',
+			'class' => 'alert-' . $type,
+		));
 	}
 
-	//Checks if Model can be searched by slug. If so, returns the slug field. Otherwise, returns false
-	//Uses the Sluggable Behavior
-	function __isSluggable($Model) {
+	/**
+	 * Checks if Model can be searched by slug. If so, returns the slug field. 
+	 * Otherwise, returns false. 
+	 * Uses the Sluggable Behavior
+	 *
+	 * @param AppModel $Model Model to check
+	 * @return bool If successful
+	 **/
+	private function _isSluggable($Model) {
 		$return = false;
 		if (array_key_exists('Sluggable', $Model->actsAs)) {
 			$return = !empty($Model->actsAs['Sluggable']['slugColumn']) ? $Model->actsAs['Sluggable']['slugColumn'] : 'slug';
@@ -416,7 +411,7 @@ class FormDataComponent extends Component {
 		return $return;
 	}
 	
-	function __checkCaptcha($data) {
+	private function _checkCaptcha($data) {
 		$this->_log($data);
 		$checkData = $data[$this->settings['model']];
 		$this->_log($checkData);
@@ -434,4 +429,44 @@ class FormDataComponent extends Component {
 	function _log($msg) {
 		$this->_log[] = $msg;
 	}
+
+	function mergeOptions($options1 = array(), $options2 = array()) {
+		$options1 = $this->_prepareOptions($options1);
+		$options2 = $this->_prepareOptions($options2);
+		$return = array_merge($options1, $options2);
+		return $return;
+	}
+
+	private function _prepareOptions($options) {
+		$numericKeys = array('link', 'contain');
+		foreach ($numericKeys as $field) {
+			if (isset($options[$field])) {
+				$options[$field] = $this->_numericKeysFix($options[$field]);
+			}
+		}
+		foreach ($options as $key => $val) {
+			if (!empty($val) && !is_array($val)) {
+				$options[$key] = array($val);
+			}
+		}
+		return $options;
+	}
+	
+	private function _numericKeysFix($array = array()) {
+		if (!is_array($array)) {
+			$array = array($array);
+		}
+		$return = array();
+		foreach ($array as $key => $val) {
+			if (is_array($val)) {
+				$return[$val] = $this->_numericKeysFix($val);
+			} else if (is_numeric($key)) {
+				$return[$val] = array();
+			} else {
+				$return[$key] = $val;
+			}
+		}
+		return $return;
+	}
+
 }
