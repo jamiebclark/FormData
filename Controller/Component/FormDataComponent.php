@@ -247,7 +247,7 @@ class FormDataComponent extends Component {
 			} else {
 				if (!$result) {
 					//debug($Model->alias);
-					//debug($Model->invalidFields());
+					debug($Model->invalidFields());
 				}
 				if (!empty($use['message'])) {
 					$this->flash($use['message'], $result ? 'success' : 'error');
@@ -381,6 +381,18 @@ class FormDataComponent extends Component {
 			$this->controller->_setFormElements($id);
 		}
 		$this->setRefererRedirect();
+	}
+	
+	public function flashError($msg) {
+		return $this->flash($msg, 'error');
+	}
+	
+	public function flashSuccess($msg) {
+		return $this->flash($msg, 'success');
+	}
+	
+	public function flashInfo($msg) {
+		return $this->flash($msg, 'info');
 	}
 	
 	private function flash($msg, $type = 'info') {
