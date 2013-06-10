@@ -395,7 +395,7 @@ class FormDataComponent extends Component {
 		return $this->flash($msg, 'info');
 	}
 	
-	private function flash($msg, $type = 'info') {
+	public function flash($msg, $type = 'info') {
 		if ($type === true) {
 			$type = 'success';
 		} else if ($type === false) {
