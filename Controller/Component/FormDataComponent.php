@@ -255,7 +255,7 @@ class FormDataComponent extends Component {
 				
 				if (!empty($use['redirect'])) {
 					if (is_array($use['redirect'])) {
-						if (($key = array_search('ID', $use['redirect'])) !== false) {
+						if (($key = array_search('ID', $use['redirect'], true)) !== false) {
 							$use['redirect'][$key] = $Model->id;
 						}
 						if (!empty($data['FormData']['redirectAction'])) {
