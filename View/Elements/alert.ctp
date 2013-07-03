@@ -8,7 +8,7 @@ if (!isset($close)) {
 ?>
 <div class="alert<?php echo ($class) ? ' ' . $class : null; ?>">
 <?php if ($close): ?>
-	<a class="close" data-dismiss="alert" href="#">×</a>
+	<a class="close" data-dismiss="alert" href="#">&times;</a>
 <?php endif; ?>
 	<?php echo $message; ?>
 </div>

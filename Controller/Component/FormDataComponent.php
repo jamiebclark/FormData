@@ -25,29 +25,12 @@ class FormDataComponent extends Component {
 		$this->isAjax = !empty($controller->request) && $controller->request->is('ajax');
 	}
 
-	
 	function findModel($id = null, $attrs = array(), $options = array()) {
-		$defaultReferer = $this->controller->referer();
-		if ($defaultReferer == '/' || $defaultReferer == Router::url()) {
-			$defaultReferer = array('action' => 'index');
-		}
-		if (empty($attrs)) {
-			$attrs = array();
-		}
-		$defaults = array(
-			'model' => $this->settings['model'],
-			'redirect' => $defaultReferer,
-			'method' => null,	//Specify a method other than find('first',...)
-		);
-		if (method_exists($this->controller, '_setFindModelAttrs')) {
-			$defaults = $this->controller->_setFindModelAttrs($defaults);
-		}
-		$attrs = array_merge($defaults, $attrs);
+		$attrs = $this->setFindModelAttrs($attrs);
 		if (!empty($attrs['options'])) {
 			$options = array_merge($options, $attrs['options']);
 			unset($attrs['options']);
 		}
-		
 		extract($attrs);
 		if (method_exists($this, $model)) {
 			$Model =& $this->controller->{$model};
@@ -107,25 +90,17 @@ class FormDataComponent extends Component {
 			$this->id = null;
 		}
 		if (empty($message)) {
-			$message = $human . ' is not found';
+			$message = "$human is not found";
 		}
 
 		if (empty($result[$Model->alias][$Model->primaryKey]) && !empty($redirect)) {
-			$message .= '! ';
-			$message .= $Model->alias . ', ';
-			$message .= $Model->primaryKey . ' ';
-			$message .= 'Looking for ID: ' . $id;
-			$message .= "<br/>\n";
+			$message .= "! {$Model->alias}, {$Model->primaryKey} Looking for ID: $id<br/>\n";
 			if (is_array($result)) {
-				$message .= 'Keys: ' . implode(', ', array_keys($result));
-				$message .= "<br/>\n";
+				$message .= 'Keys: ' . implode(', ', array_keys($result)) . "<br/>\n";
 				//$message .= 'Body: ' . implode(', ', $result);
 			}
-			
 			//$message .= implode('<br/>', debugTrace('Trace'));
-
 			$message .= '<br/>' . Router::url($redirect);
-			
 			$this->flash($message, 'error');
 			$this->controller->redirect($redirect);
 		}
@@ -133,6 +108,29 @@ class FormDataComponent extends Component {
 		return $result;
 	}
 
+	/**
+	 * Sets default options for the findModel function
+	 *
+	 * @param Array $attrs passed options overwriting the defaults
+	 * @return Array FindModel $attrs
+	 **/
+	protected function setFindModelAttrs($attrs = array()) {
+		$defaultReferer = $this->controller->referer();
+		if ($defaultReferer == '/' || $defaultReferer == Router::url()) {
+			$defaultReferer = array('action' => 'index');
+		}
+		$defaults = array(
+			'model' => $this->settings['model'],	//The Model it will be pulling the result from
+			'redirect' => $defaultReferer,			//Where to redirect if not found
+			'method' => null,						//Specify a method other than find('first',...)
+			'passIdToMethod' => false,				//If custom method requires an Id as the first argument
+		);
+		//Allows for controller overwrite function
+		if (method_exists($this->controller, '_setFindModelAttrs')) {
+			$defaults = $this->controller->_setFindModelAttrs($defaults);
+		}
+		return array_merge($defaults, (array) $attrs);
+	}
 	
 	/**
 	 * Saves new request data
