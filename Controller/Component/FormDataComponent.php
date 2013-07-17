@@ -166,7 +166,9 @@ class FormDataComponent extends Component {
 			$result = $this->findModel($id, $findAttrs, $findOptions);
 			$this->controller->request->data = $result;
 		} else {
-			$this->findModel($this->controller->request->data[$this->settings['model']]['id'], $findAttrs, $findOptions);
+			if (!empty($this->controller->request->data[$this->settings['model']]['id'])) {
+				$this->findModel($this->controller->request->data[$this->settings['model']]['id'], $findAttrs, $findOptions);
+			}
 		}
 		$this->setFormElements($id);
 		return $result;
@@ -214,10 +216,12 @@ class FormDataComponent extends Component {
 		if (!empty($passedOptions['fail'])) {
 			$options['fail'] = array_merge($options['fail'], $passedOptions['fail']);
 		}
+		
 		if (!empty($this->controller->request->data)) {
 			$data =& $this->controller->request->data;
 			$result = false;
 			$this->_storedData = $data;
+			
 			if (($data = $this->beforeSaveData($data, $saveOptions)) !== false) {
 				if (!empty($data[$model]) && count($data) == 1) {
 					if (!empty($data[$model][0])) {
@@ -423,6 +427,9 @@ class FormDataComponent extends Component {
 	
 	private function _checkCaptcha($data) {
 		$this->_log($data);
+		if (!isset($data[$this->settings['model']])) {
+			return false;
+		}
 		$checkData = $data[$this->settings['model']];
 		$this->_log($checkData);
 		if (!empty($this->controller->Captcha) && is_object($this->controller->Captcha) && empty($checkData['captcha_valid'])) {
