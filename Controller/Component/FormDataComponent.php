@@ -14,7 +14,7 @@ class FormDataComponent extends Component {
 	
 	function __construct(ComponentCollection $collection, $settings = array()) {
 		$settings = array_merge(array(
-			'overwriteFlash' = true,			//Whether or not to overwrite the default flash element
+			'overwriteFlash' => true,		//Whether or not to overwrite the default flash element
 		), $settings);
 		return parent::__construct($collection, $settings);			
 	}
