@@ -10,8 +10,18 @@ class FormDataComponent extends Component {
 	var $_log = array();
 	var $_storedData = array();
 	
-	function initialize(&$controller) {
+	const FLASH_ELEMENT = 'alert';
+	
+	function __construct(ComponentCollection $collection, $settings = array()) {
+		$settings = array_merge(array(
+			'overwriteFlash' = true,			//Whether or not to overwrite the default flash element
+		), $settings);
+		return parent::__construct($collection, $settings);			
+	}
+	
+	function initialize(Controller $controller) {
 		$this->controller =& $controller;
+		// Finds the current model of the controller
 		$model = null;
 		if (!empty($this->controller->modelClass)) {
 			$model = $this->controller->modelClass;
@@ -25,6 +35,27 @@ class FormDataComponent extends Component {
 		$this->isAjax = !empty($controller->request) && $controller->request->is('ajax');
 	}
 
+	function beforeRender(Controller $controller) {
+		//Overwrites the current Flash setup
+		if (!empty($this->settings['overwriteFlash'])) {
+			$sessionName = 'Message.flash';
+			if ($this->Session->check($sessionName)) {
+				$flash = $this->Session->read($sessionName);
+				if ($flash['element'] == 'default') {
+					$flash['element'] = self::FLASH_ELEMENT;
+					if (empty($flash['params'])) {
+						$flash['params'] = array();
+					}
+					$flash['params'] = $this->_flashParams(
+						!empty($flash['params']['type']) ? $flash['params']['type'] : null,
+						$flash['params']
+					);
+				}
+				$this->Session->write($sessionName, $flash);
+			}
+		}
+	}
+	
 	function findModel($id = null, $attrs = array(), $options = array()) {
 		$attrs = $this->setFindModelAttrs($attrs);
 		if (!empty($attrs['options'])) {
@@ -398,15 +429,28 @@ class FormDataComponent extends Component {
 	}
 	
 	public function flash($msg, $type = 'info') {
+		$this->Session->setFlash(__($msg), self::FLASH_ELEMENT, $this->_flashParams($type));
+	}
+	
+	/**
+	  * Finds params used with Session Flash
+	  *
+	  * @param String $type The type of flash message it is. Will be returned as part of the element class appended by alert-
+	  * @param Array (optional) $params Existing params to be merged into result
+	  * @return Array Params
+	  **/
+	private function _flashParams($type = null, $params = array()) {
 		if ($type === true) {
 			$type = 'success';
 		} else if ($type === false) {
 			$type = 'error';
+		} else if (empty($type)) {
+			$type = 'info';
 		}
-		$this->Session->setFlash(__($msg), 'alert', array(
-			'plugin' => 'FormData',
-			'class' => 'alert-' . $type,
-		));
+		$class = "alert-$type";
+		$params['plugin'] = $this->name;
+		$params += compact('class');
+		return $params;
 	}
 
 	/**
