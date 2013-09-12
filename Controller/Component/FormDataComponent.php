@@ -36,11 +36,15 @@ class FormDataComponent extends Component {
 	}
 
 	function beforeRender(Controller $controller) {
+		$this->overwriteFlash();
+	}
+	
+	private function overwriteFlash() {
 		//Overwrites the current Flash setup
-		if (!empty($this->settings['overwriteFlash'])) {
-			$sessionName = 'Message.flash';
-			if ($this->Session->check($sessionName)) {
-				$flash = $this->Session->read($sessionName);
+		$session = 'Message';
+		if (!empty($this->settings['overwriteFlash']) && $this->Session->check($session)) {
+			$msgs = $this->Session->read($session);
+			foreach ($msgs as $var => $flash) {
 				if ($flash['element'] == 'default') {
 					$flash['element'] = self::FLASH_ELEMENT;
 					if (empty($flash['params'])) {
@@ -51,9 +55,9 @@ class FormDataComponent extends Component {
 						$flash['params']
 					);
 				}
-				$this->Session->write($sessionName, $flash);
+				$this->Session->write("$session.$var", $flash);
 			}
-		}
+		}	
 	}
 	
 	function findModel($id = null, $attrs = array(), $options = array()) {
