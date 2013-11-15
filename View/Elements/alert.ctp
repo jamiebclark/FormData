@@ -20,16 +20,41 @@ if (!empty($this->Iconic)) {
 }
 
 ?>
-<div class="media alert<?php echo ($class) ? ' ' . $class : null; ?>">
+<div id="formdata-alert" class="media alert<?php echo ($class) ? ' ' . $class : null; ?>">
 <?php if (!empty($icon)): ?>
 	<div class="pull-left">
 		<?php echo $this->Iconic->icon($icon); ?>
 	</div>
 <?php endif; ?>
 	<div class="media-body">
-		<?php if ($close): ?>
-			<a class="close" data-dismiss="alert" href="#">&times;</a>
-		<?php endif; ?>
 		<?php echo $message; ?>
 	</div>
 </div>
+
+<?php $this->Html->scriptStart(array('inline' => false)); ?>
+$(document).ready(function() {
+	$('#formdata-alert').each(function() {
+		console.log("Found");
+		var $alert = $(this),
+			$body = $('.media-body', $alert),
+			$close = $('<a></a>', {
+				html: '&times;',
+				class: 'close',
+				href: '#'
+			})
+			.css({
+				position: 'static',
+				top: '-2px',
+				right: '-21px',
+				'line-height': '20px',
+				'font-size': '20px'
+			})
+			.click(function(e) {
+				e.preventDefault();
+				$alert.slideUp();
+			});
+			
+		$close.prependTo($body);
+	});
+});
+<?php $this->Html->scriptEnd(); ?>
