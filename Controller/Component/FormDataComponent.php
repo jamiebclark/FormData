@@ -453,6 +453,7 @@ class FormDataComponent extends Component {
 		}
 		$class = "alert-$type";
 		$params['plugin'] = $this->name;
+		$params['close'] = CakePlugin::loaded('Layout');		//Only adds a close button if Layout plugin is also used
 		$params += compact('class');
 		return $params;
 	}
