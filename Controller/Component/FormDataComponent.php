@@ -1,25 +1,26 @@
 <?php
 class FormDataComponent extends Component {
-	var $name = 'FormData';
-	var $components = array('Session');
+	public $name = 'FormData';
+	public $components = array('Session');
 	
-	var $controller;
-	var $settings = array();
-	var $isAjax = false;
+	public $controller;
+	public $settings = array();
+	public $isAjax = false;
 	
-	var $_log = array();
-	var $_storedData = array();
+	private $_log = array();
+	private $_storedData = array();
 	
 	const FLASH_ELEMENT = 'alert';
 	
-	function __construct(ComponentCollection $collection, $settings = array()) {
+	public function __construct(ComponentCollection $collection, $settings = array()) {
 		$settings = array_merge(array(
 			'overwriteFlash' => true,		//Whether or not to overwrite the default flash element
 		), $settings);
 		return parent::__construct($collection, $settings);			
 	}
 	
-	function initialize(Controller $controller) {
+	#section Callback Methods
+	public function initialize(Controller $controller) {
 		$this->controller =& $controller;
 		// Finds the current model of the controller
 		$model = null;
@@ -35,10 +36,38 @@ class FormDataComponent extends Component {
 		$this->isAjax = !empty($controller->request) && $controller->request->is('ajax');
 	}
 
-	function beforeRender(Controller $controller) {
+	public function beforeRender(Controller $controller) {
 		$this->overwriteFlash();
 	}
+	#endsection
 	
+	#section Custom Callback Methods
+	function beforeSaveData($data, $saveOptions) {
+		unset($data['FormData']);
+		if (($data = $this->callControllerMethod('_beforeSaveData', $data, $saveOptions)) === false) {
+			$this->_log('Controller beforeSaveData failed');
+			return false;
+		}
+		if (($data = $this->_checkCaptcha($data)) === false) {
+			$this->_log('CheckCaptcha Failed');
+			$this->_log($data);
+			return false;
+		}
+		return $data;
+	}
+	
+	function afterSaveData($created) {
+		$this->callControllerMethod('_afterSaveData', $created);
+		return true;
+	}
+	
+	function afterFailedSaveData() {
+		$this->callControllerMethod('_afterFailedSaveData');
+		return true;
+	}
+	#endsection
+	
+
 	private function overwriteFlash() {
 		//Overwrites the current Flash setup
 		$session = 'Message';
@@ -60,7 +89,7 @@ class FormDataComponent extends Component {
 		}	
 	}
 	
-	function findModel($id = null, $attrs = array(), $options = array()) {
+	public function findModel($id = null, $attrs = array(), $options = array()) {
 		$attrs = $this->setFindModelAttrs($attrs);
 		if (!empty($attrs['options'])) {
 			$options = array_merge($options, $attrs['options']);
@@ -98,13 +127,14 @@ class FormDataComponent extends Component {
 		
 		$this->id = $id;
 		
-		if (method_exists($this->controller, '_beforeFindModel')) {
-			$options = $this->controller->_beforeFindModel($options);
+		if ($vars = $this->callControllerMethod('_beforeFindModel', $options)) {
+			$options = $vars;
 		}
 		
-		if (method_exists($this->controller, '_setFindModelOptions')) {
-			$options = $this->controller->_setFindModelOptions($options);
+		if ($vars = $this->callControllerMethod('_setFindModelOptions', $options)) {
+			$options = $vars;
 		}
+
 		if (!empty($method) && method_exists($Model, $method)) {
 			if (!empty($passIdToMethod)) {
 				$result = $Model->{$method}($this->id, $options);
@@ -115,8 +145,8 @@ class FormDataComponent extends Component {
 			$result = $Model->find('first', $options);
 		}
 		
-		if (method_exists($this->controller, '_afterFindModel')) {
-			if (is_array($afterFindResult = $this->controller->_afterFindModel($result))) {
+		if ($afterFindResult = $this->callControllerMethod('_afterFindModel', $result)) {
+			if (is_array($afterFindResult)) {
 				$result = $afterFindResult;
 			}
 		}
@@ -175,7 +205,7 @@ class FormDataComponent extends Component {
 	 * @param array $saveOptions Model->save options
 	 * @return array Model result
 	 */
-	function addData($options = array(), $saveAttrs = array(), $saveOptions = array()) {
+	public function addData($options = array(), $saveAttrs = array(), $saveOptions = array()) {
 		$result = $this->saveData(null, $saveAttrs, $saveOptions);
 		if ($result === null && !empty($options['default'])) {
 			$this->setData($options['default'], true);
@@ -195,7 +225,7 @@ class FormDataComponent extends Component {
 	 * @param array $saveOptions Model->save options
 	 * @return array Model result
 	 **/
-	function editData($id, $findAttrs=array(), $findOptions=array(), $saveAttrs=array(), $saveOptions=array()) {
+	public function editData($id, $findAttrs=array(), $findOptions=array(), $saveAttrs=array(), $saveOptions=array()) {
 		$result = $this->saveData(null, $saveAttrs, $saveOptions);
 		if ($result === null) {
 			$result = $this->findModel($id, $findAttrs, $findOptions);
@@ -218,7 +248,7 @@ class FormDataComponent extends Component {
 	 * @param array $saveOptions Model save options
 	 * @return bool/null True if success, false if failed, null if no data present
 	 **/
-	function saveData($model = null, $passedOptions = array(), $saveOptions = array()) {
+	public function saveData($model = null, $passedOptions = array(), $saveOptions = array()) {
 		if (!empty($this->controller)) {
 			$this->controller->disableCache();
 		}
@@ -272,6 +302,7 @@ class FormDataComponent extends Component {
 					$this->afterSaveData($created);
 					$this->_log('Save was successful');
 				} else {
+					$this->afterFailedSaveData();
 					$this->_log(array('Save Failed'));
 				}
 			} else {
@@ -310,32 +341,7 @@ class FormDataComponent extends Component {
 		return null;
 	}
 	
-	function beforeSaveData($data, $saveOptions) {
-		unset($data['FormData']);
-		
-		if (method_exists($this->controller, '_beforeSaveData')) {
-			if (($data = $this->controller->_beforeSaveData($data, $saveOptions)) === false) {
-				$this->_log('Controller beforeSaveData failed');
-				return false;
-			}
-		}
-		if (($data = $this->_checkCaptcha($data)) === false) {
-			$this->_log('CheckCaptcha Failed');
-			$this->_log($data);
-			return false;
-		}
-		return $data;
-	}
-	
-	function afterSaveData($created) {
-		if (method_exists($this->controller, '_afterSaveData')) {
-			$this->controller->_afterSaveData($created);
-		}
-		return true;
-	}
-
-
-	function deleteData($id, $options = array()) {
+	public function deleteData($id, $options = array()) {
 		$redirect = $this->controller->referer();
 		$referParams = Router::parse($this->controller->referer(null, true));
 		if (
@@ -414,9 +420,7 @@ class FormDataComponent extends Component {
 	}
 	
 	function setFormElements($id = null) {
-		if (method_exists($this->controller, '_setFormElements')) {
-			$this->controller->_setFormElements($id);
-		}
+		$this->callControllerMethod('_setFormElements', $id);
 		$this->setRefererRedirect();
 	}
 	
@@ -453,6 +457,7 @@ class FormDataComponent extends Component {
 		}
 		$class = "alert-$type";
 		$params['plugin'] = $this->name;
+		$params['close'] = CakePlugin::loaded('Layout');		//Only adds a close button if Layout plugin is also used
 		$params += compact('class');
 		return $params;
 	}
@@ -533,5 +538,22 @@ class FormDataComponent extends Component {
 		}
 		return $return;
 	}
-
+	
+	/**
+	 * Checks to see if a controller method exists and calls it
+	 *
+	 * @param String $methodName The name of the method to call in the controller
+	 * @param [Mixed $...] Optional parameters to pass to method
+	 *
+	 * @return Boolean|NULL Returns the method if it exists, null if it does not
+	 **/
+	private function callControllerMethod($methodName) {
+		$args = func_get_args();
+		array_shift($args);	//Removes method name
+		if (method_exists($this->controller, $methodName)) {
+			return call_user_func_array(array($this->controller, $methodName), $args);
+		} else {
+			return null;
+		}
+	}
 }
