@@ -12,13 +12,14 @@ class FormDataComponent extends Component {
 	
 	const FLASH_ELEMENT = 'alert';
 	
-	function __construct(ComponentCollection $collection, $settings = array()) {
+	public function __construct(ComponentCollection $collection, $settings = array()) {
 		$settings = array_merge(array(
 			'overwriteFlash' => true,		//Whether or not to overwrite the default flash element
 		), $settings);
 		return parent::__construct($collection, $settings);			
 	}
 	
+	#section Callback Methods
 	public function initialize(Controller $controller) {
 		$this->controller =& $controller;
 		// Finds the current model of the controller
@@ -38,7 +39,35 @@ class FormDataComponent extends Component {
 	public function beforeRender(Controller $controller) {
 		$this->overwriteFlash();
 	}
+	#endsection
 	
+	#section Custom Callback Methods
+	function beforeSaveData($data, $saveOptions) {
+		unset($data['FormData']);
+		if ($this->callControllerMethod('_beforeSaveData', $data, $saveOptions) === false) {
+			$this->_log('Controller beforeSaveData failed');
+			return false;
+		}
+		if (($data = $this->_checkCaptcha($data)) === false) {
+			$this->_log('CheckCaptcha Failed');
+			$this->_log($data);
+			return false;
+		}
+		return $data;
+	}
+	
+	function afterSaveData($created) {
+		$this->callControllerMethod('_afterSaveData', $created);
+		return true;
+	}
+	
+	function afterFailedSaveData() {
+		$this->callControllerMethod('_afterFailedSaveData');
+		return true;
+	}
+	#endsection
+	
+
 	private function overwriteFlash() {
 		//Overwrites the current Flash setup
 		$session = 'Message';
@@ -312,31 +341,7 @@ class FormDataComponent extends Component {
 		return null;
 	}
 	
-	function beforeSaveData($data, $saveOptions) {
-		unset($data['FormData']);
-		if ($this->callControllerMethod('_beforeSaveData', $data, $saveOptions) === false) {
-			$this->_log('Controller beforeSaveData failed');
-			return false;
-		}
-		if (($data = $this->_checkCaptcha($data)) === false) {
-			$this->_log('CheckCaptcha Failed');
-			$this->_log($data);
-			return false;
-		}
-		return $data;
-	}
-	
-	function afterSaveData($created) {
-		$this->callControllerMethod('_afterSaveData', $created);
-		return true;
-	}
-	
-	function afterFailedSaveData() {
-		$this->callControllerMethod('_afterFailedSaveData');
-		return true;
-	}
-
-	function deleteData($id, $options = array()) {
+	public function deleteData($id, $options = array()) {
 		$redirect = $this->controller->referer();
 		$referParams = Router::parse($this->controller->referer(null, true));
 		if (
