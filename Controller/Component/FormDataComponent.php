@@ -44,9 +44,11 @@ class FormDataComponent extends Component {
 	#section Custom Callback Methods
 	function beforeSaveData($data, $saveOptions) {
 		unset($data['FormData']);
-		if (($data = $this->callControllerMethod('_beforeSaveData', $data, $saveOptions)) === false) {
+		if (($callResult = $this->callControllerMethod('_beforeSaveData', $data, $saveOptions)) === false) {
 			$this->_log('Controller beforeSaveData failed');
 			return false;
+		} else if (!empty($callResult)) {
+			$data = $callResult;
 		}
 		if (($data = $this->_checkCaptcha($data)) === false) {
 			$this->_log('CheckCaptcha Failed');
@@ -286,7 +288,6 @@ class FormDataComponent extends Component {
 			$data =& $this->controller->request->data;
 			$result = false;
 			$this->_storedData = $data;
-			
 			if (($data = $this->beforeSaveData($data, $saveOptions)) !== false) {
 				if (!empty($data[$model]) && count($data) == 1) {
 					if (!empty($data[$model][0])) {
