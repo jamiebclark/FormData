@@ -10,6 +10,11 @@ class FormDataComponent extends Component {
 	private $_log = array();
 	private $_storedData = array();
 	
+	private $_postSave = array(
+		'success' => array(),
+		'fail' => array(),
+	);
+	
 	const FLASH_ELEMENT = 'alert';
 	
 	public function __construct(ComponentCollection $collection, $settings = array()) {
@@ -69,6 +74,39 @@ class FormDataComponent extends Component {
 	}
 	#endsection
 	
+	#section Getters and Setters
+	public function setSuccessRedirect($redirect, $message = null) {
+		$this->setPostSave('success', compact('message', 'redirect'));
+	}
+	
+	public function setSuccessMessage($message, $redirect = null) {
+		$this->setPostSave('success', compact('message', 'redirect'));
+	}
+	
+	public function setFailRedirect($redirect, $message = null) {
+		$this->setPostSave('fail', compact('message', 'redirect'));
+	}
+	
+	public function setFailMessage($message, $redirect = null) {
+		$this->setPostSave('fail', compact('message', 'redirect'));
+	}
+
+	public function getSuccessRedirect($default = null) {
+		return $this->getPostSave('success', 'redirect', $default);
+	}
+
+	public function getSuccessMessage($default = null) {
+		return $this->getPostSave('success', 'redirect', $default);
+	}
+
+	public function getFailRedirect($default = null) {
+		return $this->getPostSave('fail', 'redirect', $default);
+	}
+
+	public function getFailMessage($default = null) {
+		return $this->getPostSave('fail', 'redirect', $default);
+	}
+	#endsection
 
 	private function overwriteFlash() {
 		//Overwrites the current Flash setup
@@ -277,6 +315,10 @@ class FormDataComponent extends Component {
 				'message' => 'Could not update ' . $modelHuman . ' info',
 			)
 		);
+		if ($returnOptions = $this->callControllerMethod('_setSaveDataOptions', $options)) {
+			$options = $returnOptions;
+		}
+		
 		if (!empty($passedOptions['success'])) {
 			$options['success'] = array_merge($options['success'], $passedOptions['success']);
 		}
@@ -288,6 +330,7 @@ class FormDataComponent extends Component {
 			$data =& $this->controller->request->data;
 			$result = false;
 			$this->_storedData = $data;
+			
 			if (($data = $this->beforeSaveData($data, $saveOptions)) !== false) {
 				if (!empty($data[$model]) && count($data) == 1) {
 					if (!empty($data[$model][0])) {
@@ -310,7 +353,14 @@ class FormDataComponent extends Component {
 				$this->_log('FormData beforeSaveData failed');
 				$data = $this->_storedData;
 			}
-			$use = $result ? $options['success'] : $options['fail'];
+			
+			//Loads default message and redirect values
+			$state = $result ? 'success' : 'fail';
+			$use = $options[$state] + array('message' => null, 'redirect' => null);
+			
+			$message = $this->getPostSave($state, 'message', $use['message']);
+			$redirect = $this->getPostSave($state, 'redirect', $use['redirect']);
+			
 			if ($this->isAjax) {
 				echo $result ? 1 : 0;
 			} else {
@@ -318,25 +368,28 @@ class FormDataComponent extends Component {
 					//debug($Model->alias);
 					//debug($Model->invalidFields());
 				}
-				if (!empty($use['message'])) {
-					$this->flash($use['message'], $result ? 'success' : 'error');
+				if (!empty($message)) {
+					$this->flash($message, $result ? 'success' : 'error');
 				}
 				
-				if (!empty($use['redirect'])) {
-					if (is_array($use['redirect'])) {
-						if (($key = array_search('ID', $use['redirect'], true)) !== false) {
-							$use['redirect'][$key] = $Model->id;
+				if (!empty($redirect)) {
+					if (is_array($redirect)) {
+						if (($key = array_search('ID', $redirect, true)) !== false) {
+							$redirect[$key] = $Model->id;
 						}
 						if (!empty($data['FormData']['redirectAction'])) {
-							$use['redirect']['action'] = $data['FormData']['redirectAction'];
+							$redirect['action'] = $data['FormData']['redirectAction'];
 						}
 						if (!empty($data['FormData']['redirectController'])) {
-							$use['redirect']['controller'] = $data['FormData']['redirectController'];
+							$redirect['controller'] = $data['FormData']['redirectController'];
 						}
 					}
-					$this->controller->redirect($use['redirect']);
+					$this->controller->redirect($redirect);
 				}
 			}
+			
+			$this->resetPostSave();
+			
 			return $result ? true : false;
 		}
 		return null;
@@ -501,6 +554,10 @@ class FormDataComponent extends Component {
 		$this->_log[] = $msg;
 	}
 
+	public function getLog() {
+		return $this->_log;
+	}
+	
 	function mergeOptions($options1 = array(), $options2 = array()) {
 		$options1 = $this->_prepareOptions($options1);
 		$options2 = $this->_prepareOptions($options2);
@@ -538,6 +595,30 @@ class FormDataComponent extends Component {
 			}
 		}
 		return $return;
+	}
+	
+	private function setPostSave($state, $vars) {
+		foreach ($vars as $k => $v) {
+			$this->_postSave[$state][$k] = $v;
+		}
+	}
+	
+	private function getPostSave($state, $field, $default = null) {
+		if (!empty($this->_postSave[$state][$field])) {
+			return $this->_postSave[$state][$field];
+		} else {
+			return $default;
+		}
+	}
+	
+	private function resetPostSave($state = null) {
+		if (!empty($state)) {
+			$this->_postSave[$state] = array();
+		} else {
+			foreach ($this->_postSave as $key => $val) {
+				$this->resetPostSave($key);
+			}
+		}
 	}
 	
 	/**
