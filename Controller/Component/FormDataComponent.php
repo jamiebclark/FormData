@@ -39,6 +39,7 @@ class FormDataComponent extends Component {
 		}
 		
 		$this->isAjax = !empty($controller->request) && $controller->request->is('ajax');
+		$this->setSuccessRedirect(array('action' => 'view', 'ID'));
 	}
 
 	public function beforeRender(Controller $controller) {
@@ -309,7 +310,7 @@ class FormDataComponent extends Component {
 		$options = array(
 			'success' => array(
 				'message' => 'Updated ' . $modelHuman . ' info',
-				'redirect' => array('action' => 'view', 'ID'),
+				'redirect' => null,
 			),
 			'fail' => array(
 				'message' => 'Could not update ' . $modelHuman . ' info',
@@ -599,7 +600,9 @@ class FormDataComponent extends Component {
 	
 	private function setPostSave($state, $vars) {
 		foreach ($vars as $k => $v) {
-			$this->_postSave[$state][$k] = $v;
+			if (isset($v)) {
+				$this->_postSave[$state][$k] = $v;
+			}
 		}
 	}
 	
