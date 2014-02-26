@@ -151,6 +151,7 @@ class FormDataComponent extends Component {
 		if (empty($options)) {
 			$options = array();
 		}
+
 		if (!empty($id) || empty($options['conditions'])) {
 			if (!is_numeric($id) && ($slugField = $this->_isSluggable($Model))) {
 				//Searches by slug
@@ -159,7 +160,7 @@ class FormDataComponent extends Component {
 				//Searches by primary ID
 				$conditions = array($Model->alias . '.' . $Model->primaryKey => $id);
 			}
-			$options = array_merge($options, compact('conditions'));
+			$options = Set::merge($options, compact('conditions'));
 		}
 		
 		$controller = Inflector::tableize($model);
@@ -175,7 +176,6 @@ class FormDataComponent extends Component {
 		if ($vars = $this->callControllerMethod('_setFindModelOptions', $options)) {
 			$options = $vars;
 		}
-
 		if (!empty($method) && method_exists($Model, $method)) {
 			if (!empty($passIdToMethod)) {
 				$result = $Model->{$method}($this->id, $options);
