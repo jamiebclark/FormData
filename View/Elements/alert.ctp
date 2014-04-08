@@ -14,7 +14,7 @@ if (!empty($this->Iconic)) {
 		$icon = 'info';
 	} else if ($class == 'alert-success') {
 		$icon = 'check_alt';
-	} else if ($class == 'alert-error') {
+	} else if ($class == 'alert-danger') {
 		$icon = 'x_alt';
 	}
 }
