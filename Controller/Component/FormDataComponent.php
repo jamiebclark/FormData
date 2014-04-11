@@ -207,7 +207,7 @@ class FormDataComponent extends Component {
 			}
 			//$message .= implode('<br/>', debugTrace('Trace'));
 			$message .= '<br/>' . Router::url($redirect);
-			$this->flash($message, 'error');
+			$this->flash($message, 'danger');
 			$this->controller->redirect($redirect);
 		}
 		$this->controller->set($varName, $result);
@@ -370,7 +370,7 @@ class FormDataComponent extends Component {
 					//debug($Model->invalidFields());
 				}
 				if (!empty($message)) {
-					$this->flash($message, $result ? 'success' : 'error');
+					$this->flash($message, $result ? 'success' : 'danger');
 				}
 				
 				if (!empty($redirect)) {
@@ -480,7 +480,7 @@ class FormDataComponent extends Component {
 	}
 	
 	public function flashError($msg) {
-		return $this->flash($msg, 'error');
+		return $this->flash($msg, 'danger');
 	}
 	
 	public function flashSuccess($msg) {
@@ -506,7 +506,7 @@ class FormDataComponent extends Component {
 		if ($type === true) {
 			$type = 'success';
 		} else if ($type === false) {
-			$type = 'error';
+			$type = 'danger';
 		} else if (empty($type)) {
 			$type = 'info';
 		}
