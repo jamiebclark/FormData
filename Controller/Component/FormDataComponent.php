@@ -130,6 +130,22 @@ class FormDataComponent extends Component {
 		}	
 	}
 	
+	public function resultToData($result, $attrs = array()) {
+		$attrs = $this->setFindModelAttrs($attrs);
+		if (!empty($attrs['options'])) {
+			$options = array_merge($options, $attrs['options']);
+			unset($attrs['options']);
+		}
+		extract($attrs);
+		$data = array();
+		if (!empty($result[$model])) {
+			$data[$model] = $result[$model];
+			unset($result[$model]);
+			$data[$model] += $result;
+		}
+		return $data;
+	}
+	
 	public function findModel($id = null, $attrs = array(), $options = array()) {
 		$attrs = $this->setFindModelAttrs($attrs);
 		if (!empty($attrs['options'])) {
@@ -192,6 +208,10 @@ class FormDataComponent extends Component {
 			}
 		}
 		
+		if (!empty($attrs['data'])) {
+			$result = $this->resultToData($result, $attrs);
+		}
+		
 		if (empty($result)) {
 			$this->id = null;
 		}
@@ -200,7 +220,7 @@ class FormDataComponent extends Component {
 		}
 
 		if (empty($result[$Model->alias][$Model->primaryKey]) && !empty($redirect)) {
-			$message .= "! {$Model->alias}, {$Model->primaryKey} Looking for ID: $id<br/>\n";
+			$message .= sprintf("! %s, %s Looking for ID: %d<br/>\n", $Model->alias, $Model->primaryKey, $id);
 			if (is_array($result)) {
 				$message .= 'Keys: ' . implode(', ', array_keys($result)) . "<br/>\n";
 				//$message .= 'Body: ' . implode(', ', $result);
