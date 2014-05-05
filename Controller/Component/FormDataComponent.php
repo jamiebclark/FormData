@@ -1,7 +1,11 @@
 <?php
 class FormDataComponent extends Component {
 	public $name = 'FormData';
-	public $components = array('Session');
+	public $components = array(
+		'FormData.ControllerMethod',
+		'FormData.FindModel',
+		'FormData.FlashMessage',
+	);
 	
 	public $controller;
 	public $settings = array();
@@ -15,42 +19,42 @@ class FormDataComponent extends Component {
 		'fail' => array(),
 	);
 	
-	const FLASH_ELEMENT = 'alert';
-	
 	public function __construct(ComponentCollection $collection, $settings = array()) {
-		$settings = array_merge(array(
-			'overwriteFlash' => true,		//Whether or not to overwrite the default flash element
-		), $settings);
+		$default = array(
+			'model' => true,
+			'plugin' => null,
+		);
+		$settings = array_merge($default, $settings);
 		return parent::__construct($collection, $settings);			
+	}
+	
+	public function setController(Controller $controller) {
+		$this->controller = $controller;
+		$this->FindModel->setController($controller);
+		$this->ControllerMethod->setController($controller);
 	}
 	
 	#section Callback Methods
 	public function initialize(Controller $controller) {
-		$this->controller =& $controller;
-		// Finds the current model of the controller
-		$model = null;
-		if (!empty($this->controller->modelClass)) {
-			$model = $this->controller->modelClass;
-		} else if (!empty($this->controller->modelClass)) {
-			$model = $this->controller->modelClass;
-		}
-		if (!empty($model)) {
+		$this->setController($controller);
+		
+		if ($modelName = $this->FindModel->getModelName($this->settings)) {
+			list($plugin, $model) = pluginSplit($modelName);
 			$this->settings['model'] = $model;
+			$this->settings['plugin'] = $plugin;
 		}
 		
 		$this->isAjax = !empty($controller->request) && $controller->request->is('ajax');
 		$this->setSuccessRedirect(array('action' => 'view', 'ID'));
+		return parent::initialize($controller);
 	}
 
-	public function beforeRender(Controller $controller) {
-		$this->overwriteFlash();
-	}
 	#endsection
 	
 	#section Custom Callback Methods
 	function beforeSaveData($data, $saveOptions) {
 		unset($data['FormData']);
-		if (($callResult = $this->callControllerMethod('_beforeSaveData', $data, $saveOptions)) === false) {
+		if (($callResult = $this->ControllerMethod->call('_beforeSaveData', $data, $saveOptions)) === false) {
 			$this->_log('Controller beforeSaveData failed');
 			return false;
 		} else if (!empty($callResult)) {
@@ -65,12 +69,12 @@ class FormDataComponent extends Component {
 	}
 	
 	function afterSaveData($created) {
-		$this->callControllerMethod('_afterSaveData', $created);
+		$this->ControllerMethod->call('_afterSaveData', $created);
 		return true;
 	}
 	
 	function afterFailedSaveData() {
-		$this->callControllerMethod('_afterFailedSaveData');
+		$this->ControllerMethod->call('_afterFailedSaveData');
 		return true;
 	}
 	#endsection
@@ -109,129 +113,9 @@ class FormDataComponent extends Component {
 	}
 	#endsection
 
-	private function overwriteFlash() {
-		//Overwrites the current Flash setup
-		$session = 'Message';
-		if (!empty($this->settings['overwriteFlash']) && $this->Session->check($session)) {
-			$msgs = $this->Session->read($session);
-			foreach ($msgs as $var => $flash) {
-				if ($flash['element'] == 'default') {
-					$flash['element'] = self::FLASH_ELEMENT;
-					if (empty($flash['params'])) {
-						$flash['params'] = array();
-					}
-					$flash['params'] = $this->_flashParams(
-						!empty($flash['params']['type']) ? $flash['params']['type'] : null,
-						$flash['params']
-					);
-				}
-				$this->Session->write("$session.$var", $flash);
-			}
-		}	
-	}
 	
-	public function resultToData($result, $attrs = array()) {
-		$attrs = $this->setFindModelAttrs($attrs);
-		if (!empty($attrs['options'])) {
-			$options = array_merge($options, $attrs['options']);
-			unset($attrs['options']);
-		}
-		extract($attrs);
-		$data = array();
-		if (!empty($result[$model])) {
-			$data[$model] = $result[$model];
-			unset($result[$model]);
-			$data[$model] += $result;
-		}
-		return $data;
-	}
-	
-	public function findModel($id = null, $attrs = array(), $options = array()) {
-		$attrs = $this->setFindModelAttrs($attrs);
-		if (!empty($attrs['options'])) {
-			$options = array_merge($options, $attrs['options']);
-			unset($attrs['options']);
-		}
-		extract($attrs);
-		if (method_exists($this, $model)) {
-			$Model =& $this->controller->{$model};
-		} else {
-			$importModel = $model;
-			if (!empty($this->settings['plugin'])) {
-				$importModel = $this->settings['plugin'] . '.' . $model;
-			}
-			App::import('Model', $importModel);
-			$Model = new $model();
-		}
-		
-		if (empty($options)) {
-			$options = array();
-		}
-
-		if (!empty($id) || empty($options['conditions'])) {
-			if (!is_numeric($id) && ($slugField = $this->_isSluggable($Model))) {
-				//Searches by slug
-				$conditions = array($Model->alias . '.' . $slugField . ' LIKE' => $id);
-			} else {
-				//Searches by primary ID
-				$conditions = array($Model->alias . '.' . $Model->primaryKey => $id);
-			}
-			$options = Set::merge($options, compact('conditions'));
-		}
-		
-		$controller = Inflector::tableize($model);
-		$varName = strtolower(substr($model, 0, 1)) . substr($model, 1);
-		$human = Inflector::humanize(Inflector::singularize($controller));
-		
-		$this->id = $id;
-		
-		if ($vars = $this->callControllerMethod('_beforeFindModel', $options)) {
-			$options = $vars;
-		}
-		
-		if ($vars = $this->callControllerMethod('_setFindModelOptions', $options)) {
-			$options = $vars;
-		}
-		if (!empty($method) && method_exists($Model, $method)) {
-			if (!empty($passIdToMethod)) {
-				$result = $Model->{$method}($this->id, $options);
-			} else {
-				$result = $Model->{$method}($options);
-			}
-		} else {
-			$result = $Model->find('first', $options);
-		}
-		
-		if ($afterFindResult = $this->callControllerMethod('_afterFindModel', $result)) {
-			if (is_array($afterFindResult)) {
-				$result = $afterFindResult;
-			}
-		}
-		
-		if (!empty($attrs['data'])) {
-			$result = $this->resultToData($result, $attrs);
-		}
-		
-		if (empty($result)) {
-			$this->id = null;
-		}
-		if (empty($message)) {
-			$message = "$human is not found";
-		}
-
-		if (empty($result[$Model->alias][$Model->primaryKey]) && !empty($redirect)) {
-			$message .= sprintf("! %s, %s Looking for ID: %d<br/>\n", $Model->alias, $Model->primaryKey, $id);
-			if (is_array($result)) {
-				$message .= 'Keys: ' . implode(', ', array_keys($result)) . "<br/>\n";
-				//$message .= 'Body: ' . implode(', ', $result);
-			}
-			//$message .= implode('<br/>', debugTrace('Trace'));
-			$message .= '<br/>' . Router::url($redirect);
-			$this->flash($message, 'danger');
-			$this->controller->redirect($redirect);
-		}
-		$this->controller->set($varName, $result);
-		return $result;
+	public function findModel($id = null, $config = array(), $query = array()) {
+		return $this->FindModel->find($id, $config, $query);
 	}
 
 	/**
@@ -240,22 +124,8 @@ class FormDataComponent extends Component {
 	 * @param Array $attrs passed options overwriting the defaults
 	 * @return Array FindModel $attrs
 	 **/
-	protected function setFindModelAttrs($attrs = array()) {
-		$defaultReferer = $this->controller->referer();
-		if ($defaultReferer == '/' || $defaultReferer == Router::url()) {
-			$defaultReferer = array('action' => 'index');
-		}
-		$defaults = array(
-			'model' => $this->settings['model'],	//The Model it will be pulling the result from
-			'redirect' => $defaultReferer,			//Where to redirect if not found
-			'method' => null,						//Specify a method other than find('first',...)
-			'passIdToMethod' => false,				//If custom method requires an Id as the first argument
-		);
-		//Allows for controller overwrite function
-		if (method_exists($this->controller, '_setFindModelAttrs')) {
-			$defaults = $this->controller->_setFindModelAttrs($defaults);
-		}
-		return array_merge($defaults, (array) $attrs);
+	protected function setFindModelAttrs($settings = array()) {
+		return $this->FindModel->setSettings($settings);
 	}
 	
 	/**
@@ -266,8 +136,8 @@ class FormDataComponent extends Component {
 	 * @param array $saveOptions Model->save options
 	 * @return array Model result
 	 */
-	public function addData($options = array(), $saveAttrs = array(), $saveOptions = array()) {
-		$result = $this->saveData(null, $saveAttrs, $saveOptions);
+	public function addData($options = array(), $saveDataOptions = array(), $saveOptions = array()) {
+		$result = $this->saveData(null, $saveDataOptions, $saveOptions);
 		if ($result === null && !empty($options['default'])) {
 			$this->setData($options['default'], true);
 		}		
@@ -279,21 +149,21 @@ class FormDataComponent extends Component {
 	 * Saves request data based on an existing model id. 
 	 * Regardless of whether it saves anything, it will still find and store the model id result
 	 *
-	 * @param int $id The id of the model being saved
-	 * @param array $findAttrs FormData->findModel options
-	 * @param array $findOptions Model->find options
-	 * @param array $saveAttrs FormData->saveData options
+	 * @param int 	$id The id of the model being saved
+	 * @param array $findModelSettings FormData->findModel options
+	 * @param array $query Model->find options
+	 * @param array $saveDataOptions FormData->saveData options
 	 * @param array $saveOptions Model->save options
 	 * @return array Model result
 	 **/
-	public function editData($id, $findAttrs=array(), $findOptions=array(), $saveAttrs=array(), $saveOptions=array()) {
-		$result = $this->saveData(null, $saveAttrs, $saveOptions);
+	public function editData($id, $findModelSettings=array(), $query=array(), $saveDataOptions=array(), $saveOptions=array()) {
+		$result = $this->saveData(null, $saveDataOptions, $saveOptions);
 		if ($result === null) {
-			$result = $this->findModel($id, $findAttrs, $findOptions);
+			$result = $this->FindModel->find($id, $findModelSettings, $query);
 			$this->controller->request->data = $result;
 		} else {
 			if (!empty($this->controller->request->data[$this->settings['model']]['id'])) {
-				$this->findModel($this->controller->request->data[$this->settings['model']]['id'], $findAttrs, $findOptions);
+				$this->FindModel->find($this->controller->request->data[$this->settings['model']]['id'], $findModelSettings, $query);
 			}
 		}
 		$this->setFormElements($id);
@@ -336,7 +206,7 @@ class FormDataComponent extends Component {
 				'message' => 'Could not update ' . $modelHuman . ' info',
 			)
 		);
-		if ($returnOptions = $this->callControllerMethod('_setSaveDataOptions', $options)) {
+		if ($returnOptions = $this->ControllerMethod->call('_setSaveDataOptions', $options)) {
 			$options = $returnOptions;
 		}
 		
@@ -390,7 +260,7 @@ class FormDataComponent extends Component {
 					//debug($Model->invalidFields());
 				}
 				if (!empty($message)) {
-					$this->flash($message, $result ? 'success' : 'danger');
+					$this->FlashMessage->flash($message, !empty($result));
 				}
 				
 				if (!empty($redirect)) {
@@ -408,9 +278,7 @@ class FormDataComponent extends Component {
 					$this->controller->redirect($redirect);
 				}
 			}
-			
 			$this->resetPostSave();
-			
 			return $result ? true : false;
 		}
 		return null;
@@ -445,7 +313,7 @@ class FormDataComponent extends Component {
 			echo round($success);
 		} else {
 			$msg = $success ? 'Deleted ' . $modelHuman . ' info' : 'Could not delete ' . $modelHuman . ' info';
-			$this->flash($msg, $success);
+			$this->FlashMessage->flash($msg, $success);
 			if (!empty($redirect)) {
 				$this->controller->redirect($redirect);
 			}
@@ -495,64 +363,26 @@ class FormDataComponent extends Component {
 	}
 	
 	function setFormElements($id = null) {
-		$this->callControllerMethod('_setFormElements', $id);
+		$this->ControllerMethod->call('_setFormElements', $id);
 		$this->setRefererRedirect();
 	}
 	
 	public function flashError($msg) {
-		return $this->flash($msg, 'danger');
+		return $this->FlashMessage->error($msg);
 	}
 	
 	public function flashSuccess($msg) {
-		return $this->flash($msg, 'success');
+		return $this->FlashMessage->success($msg);
 	}
 	
 	public function flashInfo($msg) {
-		return $this->flash($msg, 'info');
+		return $this->FlashMessage->info($msg);
 	}
 	
 	public function flash($msg, $type = 'info') {
-		$this->Session->setFlash(__($msg), self::FLASH_ELEMENT, $this->_flashParams($type));
-	}
-	
-	/**
-	  * Finds params used with Session Flash
-	  *
-	  * @param String $type The type of flash message it is. Will be returned as part of the element class appended by alert-
-	  * @param Array (optional) $params Existing params to be merged into result
-	  * @return Array Params
-	  **/
-	private function _flashParams($type = null, $params = array()) {
-		if ($type === true) {
-			$type = 'success';
-		} else if ($type === false) {
-			$type = 'danger';
-		} else if (empty($type)) {
-			$type = 'info';
-		}
-		$class = "alert-$type";
-		$params['plugin'] = $this->name;
-		$params['close'] = CakePlugin::loaded('Layout');		//Only adds a close button if Layout plugin is also used
-		$params += compact('class');
-		return $params;
+		return $this->FlashMessage->flash($msg, $type);
 	}
 
-	/**
-	 * Checks if Model can be searched by slug. If so, returns the slug field. 
-	 * Otherwise, returns false. 
-	 * Uses the Sluggable Behavior
-	 *
-	 * @param AppModel $Model Model to check
-	 * @return bool If successful
-	 **/
-	private function _isSluggable($Model) {
-		$return = false;
-		if (array_key_exists('Sluggable', $Model->actsAs)) {
-			$return = !empty($Model->actsAs['Sluggable']['slugColumn']) ? $Model->actsAs['Sluggable']['slugColumn'] : 'slug';
-		}
-		return $return;
-	}
-	
 	private function _checkCaptcha($data) {
 		$this->_log($data);
 		if (!isset($data[$this->settings['model']])) {
@@ -644,21 +474,4 @@ class FormDataComponent extends Component {
 		}
 	}
 	
-	/**
-	 * Checks to see if a controller method exists and calls it
-	 *
-	 * @param String $methodName The name of the method to call in the controller
-	 * @param [Mixed $...] Optional parameters to pass to method
-	 *
-	 * @return Boolean|NULL Returns the method if it exists, null if it does not
-	 **/
-	private function callControllerMethod($methodName) {
-		$args = func_get_args();
-		array_shift($args);	//Removes method name
-		if (method_exists($this->controller, $methodName)) {
-			return call_user_func_array(array($this->controller, $methodName), $args);
-		} else {
-			return null;
-		}
-	}
 }
