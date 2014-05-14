@@ -20,6 +20,7 @@ if (!empty($this->Iconic)) {
 }
 
 ?>
+<br/>
 <div id="formdata-alert" class="media alert<?php echo ($class) ? ' ' . $class : null; ?>">
 <?php if (!empty($icon)): ?>
 	<div class="pull-left">
@@ -34,7 +35,6 @@ if (!empty($this->Iconic)) {
 <?php $this->Html->scriptStart(array('inline' => false)); ?>
 $(document).ready(function() {
 	$('#formdata-alert').each(function() {
-		console.log("Found");
 		var $alert = $(this),
 			$body = $('.media-body', $alert),
 			$close = $('<a></a>', {
