@@ -27,6 +27,10 @@ class FormDataComponent extends Component {
 		$settings = array_merge($default, $settings);
 		return parent::__construct($collection, $settings);			
 	}
+
+	public function beforeRender(Controller $controller) {
+		$this->FlashMessage->overwriteFlash();
+	}
 	
 	public function setController(Controller $controller) {
 		$this->controller = $controller;
@@ -115,7 +119,9 @@ class FormDataComponent extends Component {
 
 	
 	public function findModel($id = null, $config = array(), $query = array()) {
-		return $this->FindModel->find($id, $config, $query);
+		$result = $this->FindModel->find($id, $config, $query);
+		$this->id = $this->FindModel->id;
+		return $result;
 	}
 
 	/**
@@ -159,11 +165,11 @@ class FormDataComponent extends Component {
 	public function editData($id, $findModelSettings=array(), $query=array(), $saveDataOptions=array(), $saveOptions=array()) {
 		$result = $this->saveData(null, $saveDataOptions, $saveOptions);
 		if ($result === null) {
-			$result = $this->FindModel->find($id, $findModelSettings, $query);
+			$result = $this->findModel($id, $findModelSettings, $query);
 			$this->controller->request->data = $result;
 		} else {
 			if (!empty($this->controller->request->data[$this->settings['model']]['id'])) {
-				$this->FindModel->find($this->controller->request->data[$this->settings['model']]['id'], $findModelSettings, $query);
+				$this->findModel($this->controller->request->data[$this->settings['model']]['id'], $findModelSettings, $query);
 			}
 		}
 		$this->setFormElements($id);
@@ -312,7 +318,7 @@ class FormDataComponent extends Component {
 		if ($this->isAjax) {
 			echo round($success);
 		} else {
-			$msg = $success ? 'Deleted ' . $modelHuman . ' info' : 'Could not delete ' . $modelHuman . ' info';
+			$msg = $success ? "Deleted $modelHuman entry" : "Could not delete $modelHuman entry";
 			$this->FlashMessage->flash($msg, $success);
 			if (!empty($redirect)) {
 				$this->controller->redirect($redirect);
