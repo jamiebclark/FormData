@@ -20,7 +20,7 @@ class FlashMessageComponent extends Component {
 		$this->overwriteFlash();
 	}
 
-	private function overwriteFlash() {
+	public function overwriteFlash() {
 		//Overwrites the current Flash setup
 		$session = 'Message';
 		if ($this->Session->check($session)) {
