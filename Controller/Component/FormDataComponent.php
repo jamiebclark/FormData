@@ -160,8 +160,7 @@ class FormDataComponent extends Component {
 			if (!empty($this->settings['plugin'])) {
 				$importModel = $this->settings['plugin'] . '.' . $model;
 			}
-			App::import('Model', $importModel);
-			$Model = new $model();
+			$Model = ClassRegistry::init($importModel, true);
 		}
 		
 		if (empty($options)) {
