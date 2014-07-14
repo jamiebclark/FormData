@@ -95,6 +95,7 @@ class FindModelComponent extends Component {
 		$human = Inflector::humanize(Inflector::singularize($controller));
 		
 		$this->id = $id;
+		$this->FormData->id = $id;
 		
 		if ($vars = $this->ControllerMethod->call('_beforeFindModel', $query)) {
 			$query = $vars;
