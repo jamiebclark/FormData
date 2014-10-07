@@ -1,12 +1,20 @@
 <?php
+App::uses('Hash', 'Utility');
+App::uses('Inflector', 'Utility');
+App::uses('Router', 'Utility');
+
 class FormDataComponent extends Component {
 	public $name = 'FormData';
-	public $components = array('Session');
+	public $components = array('Session', 'RequestHandler');
 	
 	public $controller;
 	public $settings = array();
+
 	public $isAjax = false;
 	
+	// The ID of the current model
+	public $id = null;
+
 	private $_log = array();
 	private $_storedData = array();
 	
@@ -15,6 +23,8 @@ class FormDataComponent extends Component {
 		'fail' => array(),
 	);
 	
+	private $_vars = array();
+
 	const FLASH_ELEMENT = 'alert';
 	
 	public function __construct(ComponentCollection $collection, $settings = array()) {
@@ -27,6 +37,7 @@ class FormDataComponent extends Component {
 	#section Callback Methods
 	public function initialize(Controller $controller) {
 		$this->controller =& $controller;
+
 		// Finds the current model of the controller
 		$model = null;
 		if (!empty($this->controller->modelClass)) {
@@ -37,14 +48,30 @@ class FormDataComponent extends Component {
 		if (!empty($model)) {
 			$this->settings['model'] = $model;
 		}
-		
-		$this->isAjax = !empty($controller->request) && $controller->request->is('ajax');
+
+		$this->isAjax = $this->isRequestType(['ajax']);
 		$this->setSuccessRedirect(array('action' => 'view', 'ID'));
 	}
 
+	public function beforeFilter(Controller $controller) {
+		// Makes sure JSON is detectable
+		$this->RequestHandler->setContent('json', 'application/json');
+
+		return parent::beforeFilter($controller);
+	}
+
 	public function beforeRender(Controller $controller) {
+		// Sets any variables 
+		if (!empty($this->_vars)) {
+			$this->controller->set($this->_vars);
+			if ($this->isSerialized()) {
+				// Makes sure to call serialize in case of AJAX call
+				$this->controller->set('_serialize', array_keys($this->_vars));
+			}
+		}
 		$this->overwriteFlash();
 	}
+
 	#endsection
 	
 	#section Custom Callback Methods
@@ -109,27 +136,17 @@ class FormDataComponent extends Component {
 	}
 	#endsection
 
-	private function overwriteFlash() {
-		//Overwrites the current Flash setup
-		$session = 'Message';
-		if (!empty($this->settings['overwriteFlash']) && $this->Session->check($session)) {
-			$msgs = $this->Session->read($session);
-			foreach ($msgs as $var => $flash) {
-				if ($flash['element'] == 'default') {
-					$flash['element'] = self::FLASH_ELEMENT;
-					if (empty($flash['params'])) {
-						$flash['params'] = array();
-					}
-					$flash['params'] = $this->_flashParams(
-						!empty($flash['params']['type']) ? $flash['params']['type'] : null,
-						$flash['params']
-					);
-				}
-				$this->Session->write("$session.$var", $flash);
-			}
-		}	
+	public function resultsToData($results, $attrs = array()) {
+		extract($attrs);
+		$return = [];
+		foreach ($results as $k => $row) {
+			$modelResult = $row[$model];
+			unset($row[$model]);
+			$return[$model][$k] = $modelResult + $row;
+		}
+		return $return;
 	}
-	
+
 	public function resultToData($result, $attrs = array()) {
 		$attrs = $this->setFindModelAttrs($attrs);
 		if (!empty($attrs['options'])) {
@@ -145,7 +162,51 @@ class FormDataComponent extends Component {
 		}
 		return $data;
 	}
-	
+
+/**
+ * Returns a list of model entries
+ * 
+ * @param Array $query Additional query parameters to pass to the model
+ * @param Array $options Options to customize the result
+ * 		- 'paginate'	Should the result be a paged value
+ * 		- 'method'		A method other than 'find' to retrieve the results
+ * 		- 'varName'		The name of the returned result. 
+ *
+ * @return The found Model result
+ **/
+	public function findAll($query = null, $options = array()) {
+		$Model = $this->getModel();
+		$options = array_merge(array(
+			'paginate' => true,
+			'method' => false,
+			'varName' => Inflector::pluralize(Inflector::variable($Model->alias)),
+		), $options);
+		extract($options);
+
+		if ($method) {
+			$result = $Model->{$method}($query);
+		} else if ($paginate) {
+			if (isset($query)) {
+				$this->controller->paginate = $query;
+			}
+			$result = $this->controller->paginate();
+		} else {
+			$result = $Model->find('all', $query);
+		}
+
+		$this->set($varName, $result);
+		return $result;
+	}
+
+/**
+ * Finds one entry from the current model
+ * 
+ * @param int $id The current model ID
+ * @param Array $attrs Options to be passed 
+ * @param Array $options Additional query information to be passed to the Model's find method
+ * 
+ * @return Array|bool The resulting array if found, false if not
+ **/
 	public function findModel($id = null, $attrs = array(), $options = array()) {
 		$attrs = $this->setFindModelAttrs($attrs);
 		if (!empty($attrs['options'])) {
@@ -153,15 +214,8 @@ class FormDataComponent extends Component {
 			unset($attrs['options']);
 		}
 		extract($attrs);
-		if (method_exists($this, $model)) {
-			$Model =& $this->controller->{$model};
-		} else {
-			$importModel = $model;
-			if (!empty($this->settings['plugin'])) {
-				$importModel = $this->settings['plugin'] . '.' . $model;
-			}
-			$Model = ClassRegistry::init($importModel, true);
-		}
+
+		$Model = $this->getModel($model);
 		
 		if (empty($options)) {
 			$options = array();
@@ -170,10 +224,10 @@ class FormDataComponent extends Component {
 		if (!empty($id) || empty($options['conditions'])) {
 			if (!is_numeric($id) && ($slugField = $this->_isSluggable($Model))) {
 				//Searches by slug
-				$conditions = array($Model->alias . '.' . $slugField . ' LIKE' => $id);
+				$conditions = array($Model->escapeField($slugField) . ' LIKE' => $id);
 			} else {
 				//Searches by primary ID
-				$conditions = array($Model->alias . '.' . $Model->primaryKey => $id);
+				$conditions = array($Model->escapeField() => $id);
 			}
 			$options = Set::merge($options, compact('conditions'));
 		}
@@ -218,7 +272,8 @@ class FormDataComponent extends Component {
 			$message = "$human is not found";
 		}
 
-		if (empty($result[$Model->alias][$Model->primaryKey]) && !empty($redirect)) {
+		// Result was not found
+		if (empty($result[$Model->alias][$Model->primaryKey])) {
 			$message .= sprintf("! %s, %s Looking for ID: %d<br/>\n", $Model->alias, $Model->primaryKey, $id);
 			if (is_array($result)) {
 				$message .= 'Keys: ' . implode(', ', array_keys($result)) . "<br/>\n";
@@ -226,19 +281,25 @@ class FormDataComponent extends Component {
 			}
 			//$message .= implode('<br/>', debugTrace('Trace'));
 			$message .= '<br/>' . Router::url($redirect);
-			$this->flash($message, 'danger');
-			$this->controller->redirect($redirect);
+
+			if (!$this->isAjax && !empty($redirect)) {
+				$this->flash($message, 'danger');	
+				$this->controller->redirect($redirect);
+			} else {
+				throw new NotFoundException($message);
+			}
 		}
-		$this->controller->set($varName, $result);
+
+		$this->set($varName, $result);
 		return $result;
 	}
 
-	/**
-	 * Sets default options for the findModel function
-	 *
-	 * @param Array $attrs passed options overwriting the defaults
-	 * @return Array FindModel $attrs
-	 **/
+/**
+ * Sets default options for the findModel function
+ *
+ * @param Array $attrs passed options overwriting the defaults
+ * @return Array FindModel $attrs
+ **/
 	protected function setFindModelAttrs($attrs = array()) {
 		$defaultReferer = $this->controller->referer();
 		if ($defaultReferer == '/' || $defaultReferer == Router::url()) {
@@ -257,14 +318,14 @@ class FormDataComponent extends Component {
 		return array_merge($defaults, (array) $attrs);
 	}
 	
-	/**
-	 * Saves new request data
-	 *
-	 * @param array $options addData options, including default values to be passed to the form
-	 * @param array $saveAttrs FormData->saveData options
-	 * @param array $saveOptions Model->save options
-	 * @return array Model result
-	 */
+/**
+ * Saves new request data
+ *
+ * @param array $options addData options, including default values to be passed to the form
+ * @param array $saveAttrs FormData->saveData options
+ * @param array $saveOptions Model->save options
+ * @return array Model result
+ */
 	public function addData($options = array(), $saveAttrs = array(), $saveOptions = array()) {
 		$result = $this->saveData(null, $saveAttrs, $saveOptions);
 		if ($result === null && !empty($options['default'])) {
@@ -274,17 +335,17 @@ class FormDataComponent extends Component {
 		return $result;
 	}
 	
-	/**
-	 * Saves request data based on an existing model id. 
-	 * Regardless of whether it saves anything, it will still find and store the model id result
-	 *
-	 * @param int $id The id of the model being saved
-	 * @param array $findAttrs FormData->findModel options
-	 * @param array $findOptions Model->find options
-	 * @param array $saveAttrs FormData->saveData options
-	 * @param array $saveOptions Model->save options
-	 * @return array Model result
-	 **/
+/**
+ * Saves request data based on an existing model id. 
+ * Regardless of whether it saves anything, it will still find and store the model id result
+ *
+ * @param int $id The id of the model being saved
+ * @param array $findAttrs FormData->findModel options
+ * @param array $findOptions Model->find options
+ * @param array $saveAttrs FormData->saveData options
+ * @param array $saveOptions Model->save options
+ * @return array Model result
+ **/
 	public function editData($id, $findAttrs=array(), $findOptions=array(), $saveAttrs=array(), $saveOptions=array()) {
 		$result = $this->saveData(null, $saveAttrs, $saveOptions);
 		if ($result === null) {
@@ -299,15 +360,15 @@ class FormDataComponent extends Component {
 		return $result;
 	}	
 	
-	/**
-	 * Handles the basic code appearing at the top of any add or edit controller function
-	 * returns true if successfully saved, false if failed at saving, null if no data is detected
-	 * 
-	 * @param string/null $model Model to save. Uses controller model if null
-	 * @param array $passedOptions FormData-specific options
-	 * @param array $saveOptions Model save options
-	 * @return bool/null True if success, false if failed, null if no data present
-	 **/
+/**
+ * Handles the basic code appearing at the top of any add or edit controller function
+ * returns true if successfully saved, false if failed at saving, null if no data is detected
+ * 
+ * @param string/null $model Model to save. Uses controller model if null
+ * @param array $passedOptions FormData-specific options
+ * @param array $saveOptions Model save options
+ * @return bool/null True if success, false if failed, null if no data present
+ **/
 	public function saveData($model = null, $passedOptions = array(), $saveOptions = array()) {
 		if (!empty($this->controller)) {
 			$this->controller->disableCache();
@@ -353,7 +414,8 @@ class FormDataComponent extends Component {
 			
 			if (($data = $this->beforeSaveData($data, $saveOptions)) !== false) {
 				if (!empty($data[$model]) && count($data) == 1) {
-					if (!empty($data[$model][0])) {
+					if (empty($data[$model][0])) {
+						debug(compact('data', 'model'));
 						$result = $Model->save($data[$model], $saveOptions);
 					} else {
 						$result = $Model->saveAll($data[$model], $saveOptions);
@@ -382,7 +444,12 @@ class FormDataComponent extends Component {
 			$redirect = $this->getPostSave($state, 'redirect', $use['redirect']);
 			
 			if ($this->isAjax) {
-				echo $result ? 1 : 0;
+				$this->set([
+					'message' => $message,
+					'success' => !empty($result),
+					'url' => $redirect,
+					'id' => $this->id,
+				]);
 			} else {
 				if (!$result) {
 					//debug($Model->alias);
@@ -409,12 +476,19 @@ class FormDataComponent extends Component {
 			}
 			
 			$this->resetPostSave();
-			
 			return $result ? true : false;
 		}
 		return null;
 	}
 	
+/**
+ * Deletes data from the current model
+ *
+ * @param int $id The model ID to delete
+ * @param Array $options Additional options
+ *
+ * @return void
+ **/
 	public function deleteData($id, $options = array()) {
 		$redirect = $this->controller->referer();
 		$referParams = Router::parse($this->controller->referer(null, true));
@@ -450,7 +524,83 @@ class FormDataComponent extends Component {
 			}
 		}
 	}
+
+/**
+ * Looks in the requested data for an HABTM list of ids
+ *
+ * @param string $modelName The name of the model you're searching for
+ * @return array A list of ($id => $title) values
+ **/
+	public function findHabtmList($modelName) {
+		$controllerModelClass = $this->controller->modelClass;
+		if (!empty($this->controller->$controllerModelClass->hasAndBelongsToMany[$modelName]['className'])) {
+			$className = $this->controller->$controllerModelClass->hasAndBelongsToMany[$modelName]['className'];
+		} else {
+			$className = $modelName;
+		}
+		$data =& $this->controller->request->data;
+		if (!empty($data[$modelName][0])) {
+			// Initially pulled from the database
+			$extract = $modelName . '.{n}.id';
+		} else if (!empty($data[$modelName][$modelName])) {
+			// Passed as a form
+			$extract = $modelName . '.' . $modelName . '.{n}';
+		} else {
+			$extract = false;
+		}
+		if ($extract) {
+			$Model = ClassRegistry::init($className);
+			return $Model->find('list', [
+				'conditions' => [$Model->escapeField() => Hash::extract($data, $extract)]
+			]);
+		}
+		return null;
+	}
+
+/**
+ * Stores a variable to be set to the controller
+ *
+ * @param String|Array $name Either the name of the variable, or an array of variables to be set
+ * @param String|null $value If $name is a string, the corresponding value
+ *
+ * @return void;
+ **/
+	private function set($name, $value = null) {
+		if (is_array($name)) {
+			foreach ($name as $k => $v) {
+				$this->set($k, $v);
+			}
+		} else {
+			$this->_vars[$name] = $value;
+		}
+	}
+
+
+/**
+ * OVerwrites the default Session Flash parameters
+ *
+ **/
+	private function overwriteFlash() {
+		$session = 'Message';
+		if (!empty($this->settings['overwriteFlash']) && $this->Session->check($session)) {
+			$msgs = $this->Session->read($session);
+			foreach ($msgs as $var => $flash) {
+				if ($flash['element'] == 'default') {
+					$flash['element'] = self::FLASH_ELEMENT;
+					if (empty($flash['params'])) {
+						$flash['params'] = array();
+					}
+					$flash['params'] = $this->_flashParams(
+						!empty($flash['params']['type']) ? $flash['params']['type'] : null,
+						$flash['params']
+					);
+				}
+				$this->Session->write("$session.$var", $flash);
+			}
+		}	
+	}
 	
+
 	function setRefererRedirect() {
 		$referer = Router::parse($this->controller->referer(null, true));
 		$options = !empty($this->settings['refererRedirect']) ? $this->settings['refererRedirect'] : null;
@@ -514,13 +664,13 @@ class FormDataComponent extends Component {
 		$this->Session->setFlash(__($msg), self::FLASH_ELEMENT, $this->_flashParams($type));
 	}
 	
-	/**
-	  * Finds params used with Session Flash
-	  *
-	  * @param String $type The type of flash message it is. Will be returned as part of the element class appended by alert-
-	  * @param Array (optional) $params Existing params to be merged into result
-	  * @return Array Params
-	  **/
+/**
+  * Finds params used with Session Flash
+  *
+  * @param String $type The type of flash message it is. Will be returned as part of the element class appended by alert-
+  * @param Array (optional) $params Existing params to be merged into result
+  * @return Array Params
+  **/
 	private function _flashParams($type = null, $params = array()) {
 		if ($type === true) {
 			$type = 'success';
@@ -536,14 +686,14 @@ class FormDataComponent extends Component {
 		return $params;
 	}
 
-	/**
-	 * Checks if Model can be searched by slug. If so, returns the slug field. 
-	 * Otherwise, returns false. 
-	 * Uses the Sluggable Behavior
-	 *
-	 * @param AppModel $Model Model to check
-	 * @return bool If successful
-	 **/
+/**
+ * Checks if Model can be searched by slug. If so, returns the slug field. 
+ * Otherwise, returns false. 
+ * Uses the Sluggable Behavior
+ *
+ * @param AppModel $Model Model to check
+ * @return bool If successful
+ **/
 	private function _isSluggable($Model) {
 		$return = false;
 		if (array_key_exists('Sluggable', $Model->actsAs)) {
@@ -552,6 +702,37 @@ class FormDataComponent extends Component {
 		return $return;
 	}
 	
+	private function isSerialized() {
+		return $this->isRequestType(array('ajax', 'json', 'xml', 'rss', 'atom'));
+	}
+
+	private function isRequestType($type) {
+		if (is_array($type)) {
+			foreach ($type as $val) {
+				if ($this->isRequestType($val)) {
+					return true;
+				}
+			}
+			return false;
+		}
+		
+		/*
+		debug([
+			'Type' => $type,
+			'Ext' => !empty($this->controller->request->params['ext']) ? $this->controller->request->params['ext'] : 'None',
+			'Request Accepts' => $this->controller->request->accepts($type),
+			'RequestHandler Accepts' => $this->controller->RequestHandler->accepts($type),
+			'RequestHandler Prefers' => $this->controller->RequestHandler->prefers($type),
+			'Is' => $this->controller->request->is($type)
+		]);
+		return false;
+		*/
+		if ($type == 'ajax') {
+			return !empty($this->controller->request) && $this->controller->request->is('ajax');
+		}
+		return $this->controller->RequestHandler->prefers($type);
+	}
+
 	private function _checkCaptcha($data) {
 		$this->_log($data);
 		if (!isset($data[$this->settings['model']])) {
@@ -659,5 +840,25 @@ class FormDataComponent extends Component {
 		} else {
 			return null;
 		}
+	}
+
+
+	private function getModel($model = null) {
+		if (empty($model)) {
+			$model = $this->settings['model'];
+		}
+		if (method_exists($this, $model)) {
+			$Model =& $this->controller->{$model};
+		} else {
+			$importModel = $model;
+			if (!empty($this->settings['plugin'])) {
+				$importModel = $this->settings['plugin'] . '.' . $model;
+			}
+			$Model = ClassRegistry::init($importModel, true);
+			if (empty($Model) && !empty($this->controller->plugin) && empty($this->settings['plugin'])) {
+				$Model = ClassRegistry::init($this->controller->plugin . '.' . $importModel, true);
+			}
+		}
+		return $Model;
 	}
 }
