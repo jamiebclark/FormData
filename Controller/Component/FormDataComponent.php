@@ -415,7 +415,6 @@ class FormDataComponent extends Component {
 			if (($data = $this->beforeSaveData($data, $saveOptions)) !== false) {
 				if (!empty($data[$model]) && count($data) == 1) {
 					if (empty($data[$model][0])) {
-						debug(compact('data', 'model'));
 						$result = $Model->save($data[$model], $saveOptions);
 					} else {
 						$result = $Model->saveAll($data[$model], $saveOptions);
