@@ -441,14 +441,31 @@ class FormDataComponent extends Component {
 			
 			$message = $this->getPostSave($state, 'message', $use['message']);
 			$redirect = $this->getPostSave($state, 'redirect', $use['redirect']);
+
+			if (!empty($redirect)) {
+				if (is_array($redirect)) {
+					if (($key = array_search('ID', $redirect, true)) !== false) {
+						$redirect[$key] = $Model->id;
+					}
+					if (!empty($data['FormData']['redirectAction'])) {
+						$redirect['action'] = $data['FormData']['redirectAction'];
+					}
+					if (!empty($data['FormData']['redirectController'])) {
+						$redirect['controller'] = $data['FormData']['redirectController'];
+					}
+					$redirect = Router::url($redirect);
+				}
+			}
 			
 			if ($this->isAjax) {
-				$this->set([
+				echo json_encode([
 					'message' => $message,
 					'success' => !empty($result),
 					'url' => $redirect,
 					'id' => $this->id,
 				]);
+				exit();
+
 			} else {
 				if (!$result) {
 					//debug($Model->alias);
@@ -459,17 +476,6 @@ class FormDataComponent extends Component {
 				}
 				
 				if (!empty($redirect)) {
-					if (is_array($redirect)) {
-						if (($key = array_search('ID', $redirect, true)) !== false) {
-							$redirect[$key] = $Model->id;
-						}
-						if (!empty($data['FormData']['redirectAction'])) {
-							$redirect['action'] = $data['FormData']['redirectAction'];
-						}
-						if (!empty($data['FormData']['redirectController'])) {
-							$redirect['controller'] = $data['FormData']['redirectController'];
-						}
-					}
 					$this->controller->redirect($redirect);
 				}
 			}
