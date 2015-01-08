@@ -453,7 +453,7 @@ class FormDataComponent extends Component {
 					if (!empty($data['FormData']['redirectController'])) {
 						$redirect['controller'] = $data['FormData']['redirectController'];
 					}
-					$redirect = Router::url($redirect);
+					$redirect = Router::url(array('base' => false) + $redirect);
 				}
 			}
 			
