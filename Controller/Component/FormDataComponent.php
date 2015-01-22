@@ -393,7 +393,7 @@ class FormDataComponent extends Component {
 				'redirect' => null,
 			),
 			'fail' => array(
-				'message' => 'Could not update ' . $modelHuman . ' info',
+				'message' => 'Could not update ' . $modelHuman . ' entry',
 			)
 		);
 		if ($returnOptions = $this->callControllerMethod('_setSaveDataOptions', $options)) {
@@ -428,6 +428,17 @@ class FormDataComponent extends Component {
 					$this->_log('Save was successful');
 				} else {
 					$this->afterFailedSaveData();
+					if (Configure::read('debug') == 2 && !empty($Model->validationErrors)) {
+						$options['fail']['message'] .= "<ul>";
+						foreach ($Model->validationErrors as $field => $errors) {
+							$options['fail']['message'] .= "<li><strong>" . $field . "</strong><ul>";
+							foreach ($errors as $error) {
+								$options['fail']['message'] .= "<li>$error</li>\n";
+							}
+							$options['fail']['message'] .= "</ul></li>\n";
+						}
+						$options['fail']['message'] .= "</ul>";
+					}
 					$this->_log(array('Save Failed'));
 				}
 			} else {
