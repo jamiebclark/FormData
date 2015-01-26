@@ -3,6 +3,10 @@ App::uses('Hash', 'Utility');
 App::uses('Inflector', 'Utility');
 App::uses('Router', 'Utility');
 
+App::uses('CakeLog', 'Log');
+App::uses('Debugger', 'Utility');
+
+
 class FormDataComponent extends Component {
 	public $name = 'FormData';
 	public $components = array('Session', 'RequestHandler');
@@ -274,6 +278,10 @@ class FormDataComponent extends Component {
 
 		// Result was not found
 		if (empty($result[$Model->alias][$Model->primaryKey])) {
+			$errorMessage = sprintf('FormDataComponent could not find model "%s" %s: %d', $Model->alias, $Model->primaryKey, $id);
+			$errorMessage .= "\nRequest URL: " . $this->controller->request->here();
+			$errorMessage .= "\nStack Trace:\n" . Debugger::trace();
+			CakeLog::write('error', $errorMessage);
 			$message .= sprintf("! %s, %s Looking for ID: %d<br/>\n", $Model->alias, $Model->primaryKey, $id);
 			if (is_array($result)) {
 				$message .= 'Keys: ' . implode(', ', array_keys($result)) . "<br/>\n";
