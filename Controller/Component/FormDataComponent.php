@@ -437,15 +437,7 @@ class FormDataComponent extends Component {
 				} else {
 					$this->afterFailedSaveData();
 					if (Configure::read('debug') == 2 && !empty($Model->validationErrors)) {
-						$options['fail']['message'] .= "<ul>";
-						foreach ($Model->validationErrors as $field => $errors) {
-							$options['fail']['message'] .= "<li><strong>" . $field . "</strong><ul>";
-							foreach ($errors as $error) {
-								$options['fail']['message'] .= "<li>$error</li>\n";
-							}
-							$options['fail']['message'] .= "</ul></li>\n";
-						}
-						$options['fail']['message'] .= "</ul>";
+						$options['fail']['message'] .= $this->getValidationErrorsList($Model->validationErrors);
 					}
 					$this->_log(array('Save Failed'));
 				}
@@ -503,6 +495,24 @@ class FormDataComponent extends Component {
 			return $result ? true : false;
 		}
 		return null;
+	}
+
+	private function getValidationErrorsList($errors, $depth = 0) {
+		$list = "<ul>";
+		foreach ($errors as $key => $error) {
+			$list .= "<li>";
+			if (!is_numeric($key)) {
+				$list .= "$key: ";
+			}
+			if (is_array($error)) {
+				$list .= $this->getValidationErrorsList($error, $depth + 1);
+			} else {
+				$list .= $error;
+			}
+			$list .= "</li>";
+		}
+		$list .= "</ul>";
+		return $list;
 	}
 	
 /**
