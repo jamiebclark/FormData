@@ -1,7 +1,7 @@
 <?php
 class CrudComponent extends Component {
 	public $name = 'Crud';
-	public $components = array('Session');
+	public $components = array('Session', 'RequestHandler');
 	
 	public $controller;
 	public $settings = array();
@@ -39,11 +39,25 @@ class CrudComponent extends Component {
 			$this->settings['model'] = $model;
 		}
 		
-		$this->isAjax = !empty($controller->request) && $controller->request->is('ajax');
-		$this->setSuccessRedirect(array('action' => 'view', 'ID'));
+		$this->isAjax = $this->isRequestType(['ajax']);
+		// $this->setSuccessRedirect(array('action' => 'view', 'ID'));
+	}
+
+	public function beforeFilter(Controller $controller) {
+		// Makes sure JSON is detectable
+		$this->RequestHandler->setContent('json', 'application/json');
+		return parent::beforeFilter($controller);
 	}
 
 	public function beforeRender(Controller $controller) {
+		// Sets any variables 
+		if (!empty($this->_vars)) {
+			$this->controller->set($this->_vars);
+			if ($this->isSerialized()) {
+				// Makes sure to call serialize in case of AJAX call
+				$this->controller->set('_serialize', array_keys($this->_vars));
+			}
+		}
 		if ($this->settings['overwriteFlash']) {
 			$this->overwriteFlash();
 		}
@@ -331,7 +345,7 @@ class CrudComponent extends Component {
 		$options = array(
 			'success' => array(
 				'message' => 'Updated ' . $modelHuman . ' info',
-				'redirect' => null,
+				'redirect' => array('view', 'ID'),
 			),
 			'fail' => array(
 				'message' => 'Could not update ' . $modelHuman . ' info',
@@ -382,9 +396,21 @@ class CrudComponent extends Component {
 			
 			$message = $this->getPostSave($state, 'message', $use['message']);
 			$redirect = $this->getPostSave($state, 'redirect', $use['redirect']);
+
+			if (is_array($redirect)) {
+				if (($key = array_search('ID', $redirect, true)) !== false) {
+					$redirect[$key] = $Model->id;
+				}
+			}
 			
 			if ($this->isAjax) {
-				echo $result ? 1 : 0;
+				echo json_encode([
+					'message' => $message,
+					'success' => !empty($result),
+					'url' => Router::url($redirect, true),
+					'id' => $Model->id,
+				]);
+				exit();
 			} else {
 				if (!$result) {
 					//debug($Model->alias);
@@ -393,19 +419,8 @@ class CrudComponent extends Component {
 				if (!empty($message)) {
 					$this->flash($message, $result ? 'success' : 'danger');
 				}
-				
+			
 				if (!empty($redirect)) {
-					if (is_array($redirect)) {
-						if (($key = array_search('ID', $redirect, true)) !== false) {
-							$redirect[$key] = $Model->id;
-						}
-						if (!empty($data['FormData']['redirectAction'])) {
-							$redirect['action'] = $data['FormData']['redirectAction'];
-						}
-						if (!empty($data['FormData']['redirectController'])) {
-							$redirect['controller'] = $data['FormData']['redirectController'];
-						}
-					}
 					$this->controller->redirect($redirect);
 				}
 			}
@@ -669,5 +684,36 @@ class CrudComponent extends Component {
 		} else {
 			return null;
 		}
+	}
+
+	private function isSerialized() {
+		return $this->isRequestType(array('ajax', 'json', 'xml', 'rss', 'atom'));
+	}
+
+	private function isRequestType($type) {
+		if (is_array($type)) {
+			foreach ($type as $val) {
+				if ($this->isRequestType($val)) {
+					return true;
+				}
+			}
+			return false;
+		}
+		
+		/*
+		debug([
+			'Type' => $type,
+			'Ext' => !empty($this->controller->request->params['ext']) ? $this->controller->request->params['ext'] : 'None',
+			'Request Accepts' => $this->controller->request->accepts($type),
+			'RequestHandler Accepts' => $this->controller->RequestHandler->accepts($type),
+			'RequestHandler Prefers' => $this->controller->RequestHandler->prefers($type),
+			'Is' => $this->controller->request->is($type)
+		]);
+		return false;
+		*/
+		if ($type == 'ajax') {
+			return !empty($this->controller->request) && $this->controller->request->is('ajax');
+		}
+		return $this->controller->RequestHandler->prefers($type);
 	}
 }
