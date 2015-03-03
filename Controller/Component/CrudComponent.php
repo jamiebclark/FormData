@@ -16,6 +16,7 @@ class CrudComponent extends Component {
 	);
 	
 	const FLASH_ELEMENT = 'alert';
+	const PLUGIN_NAME = 'FormData';
 	
 	public function __construct(ComponentCollection $collection, $settings = array()) {
 		$settings = array_merge(array(
@@ -43,7 +44,9 @@ class CrudComponent extends Component {
 	}
 
 	public function beforeRender(Controller $controller) {
-		$this->overwriteFlash();
+		if ($this->settings['overwriteFlash']) {
+			$this->overwriteFlash();
+		}
 	}
 	#endsection
 	
@@ -114,6 +117,7 @@ class CrudComponent extends Component {
 		$session = 'Message';
 		if (!empty($this->settings['overwriteFlash']) && $this->Session->check($session)) {
 			$msgs = $this->Session->read($session);
+			debug($msgs);
 			foreach ($msgs as $var => $flash) {
 				if ($flash['element'] == 'default') {
 					$flash['element'] = self::FLASH_ELEMENT;
@@ -130,14 +134,14 @@ class CrudComponent extends Component {
 		}	
 	}
 	
-	/**
-	 * Saves new request data
-	 *
-	 * @param array $options create options, including default values to be passed to the form
-	 * @param array $saveAttrs FormData->saveData options
-	 * @param array $saveOptions Model->save options
-	 * @return array Model result
-	 */
+/**
+ * Saves new request data
+ *
+ * @param array $options create options, including default values to be passed to the form
+ * @param array $saveAttrs FormData->saveData options
+ * @param array $saveOptions Model->save options
+ * @return array Model result
+ */
 	public function create($options = array(), $saveAttrs = array(), $saveOptions = array()) {
 		$result = $this->saveData(null, $saveAttrs, $saveOptions);
 		if ($result === null && !empty($options['default'])) {
@@ -235,17 +239,17 @@ class CrudComponent extends Component {
 	}
 
 
-	/**
-	 * Saves request data based on an existing model id. 
-	 * Regardless of whether it saves anything, it will still find and store the model id result
-	 *
-	 * @param int $id The id of the model being saved
-	 * @param array $findAttrs FormData->findModel options
-	 * @param array $findOptions Model->find options
-	 * @param array $saveAttrs FormData->saveData options
-	 * @param array $saveOptions Model->save options
-	 * @return array Model result
-	 **/
+/**
+ * Saves request data based on an existing model id. 
+ * Regardless of whether it saves anything, it will still find and store the model id result
+ *
+ * @param int $id The id of the model being saved
+ * @param array $findAttrs FormData->findModel options
+ * @param array $findOptions Model->find options
+ * @param array $saveAttrs FormData->saveData options
+ * @param array $saveOptions Model->save options
+ * @return array Model result
+ **/
 	public function update($id, $findAttrs=array(), $findOptions=array(), $saveAttrs=array(), $saveOptions=array()) {
 		$result = $this->saveData(null, $saveAttrs, $saveOptions);
 		if ($result === null) {
@@ -297,15 +301,15 @@ class CrudComponent extends Component {
 	}
 	
 	
-	/**
-	 * Handles the basic code appearing at the top of any add or edit controller function
-	 * returns true if successfully saved, false if failed at saving, null if no data is detected
-	 * 
-	 * @param string/null $model Model to save. Uses controller model if null
-	 * @param array $passedOptions FormData-specific options
-	 * @param array $saveOptions Model save options
-	 * @return bool/null True if success, false if failed, null if no data present
-	 **/
+/**
+ * Handles the basic code appearing at the top of any add or edit controller function
+ * returns true if successfully saved, false if failed at saving, null if no data is detected
+ * 
+ * @param string/null $model Model to save. Uses controller model if null
+ * @param array $passedOptions FormData-specific options
+ * @param array $saveOptions Model save options
+ * @return bool/null True if success, false if failed, null if no data present
+ **/
 	public function saveData($model = null, $passedOptions = array(), $saveOptions = array()) {
 		if (!empty($this->controller)) {
 			$this->controller->disableCache();
@@ -429,12 +433,12 @@ class CrudComponent extends Component {
 		return $data;
 	}
 	
-	/**
-	 * Sets default options for the findModel function
-	 *
-	 * @param Array $attrs passed options overwriting the defaults
-	 * @return Array CrudRead $attrs
-	 **/
+/**
+ * Sets default options for the findModel function
+ *
+ * @param Array $attrs passed options overwriting the defaults
+ * @return Array CrudRead $attrs
+ **/
 	protected function setCrudReadAttrs($attrs = array()) {
 		$defaultReferer = $this->controller->referer();
 		if ($defaultReferer == '/' || $defaultReferer == Router::url()) {
@@ -514,16 +518,17 @@ class CrudComponent extends Component {
 	}
 	
 	public function flash($msg, $type = 'info') {
-		$this->Session->setFlash(__($msg), self::FLASH_ELEMENT, $this->_flashParams($type));
+		$element = $this->settings['overwriteFlash'] ? self::FLASH_ELEMENT : 'default';
+		$this->Session->setFlash(__($msg), $element, $this->_flashParams($type));
 	}
 	
-	/**
-	  * Finds params used with Session Flash
-	  *
-	  * @param String $type The type of flash message it is. Will be returned as part of the element class appended by alert-
-	  * @param Array (optional) $params Existing params to be merged into result
-	  * @return Array Params
-	  **/
+/**
+  * Finds params used with Session Flash
+  *
+  * @param String $type The type of flash message it is. Will be returned as part of the element class appended by alert-
+  * @param Array (optional) $params Existing params to be merged into result
+  * @return Array Params
+  **/
 	private function _flashParams($type = null, $params = array()) {
 		if ($type === true) {
 			$type = 'success';
@@ -533,20 +538,22 @@ class CrudComponent extends Component {
 			$type = 'info';
 		}
 		$class = "alert-$type";
-		$params['plugin'] = $this->name;
+		if ($this->settings['overwriteFlash']) {
+			$params['plugin'] = self::PLUGIN_NAME;
+		}
 		$params['close'] = CakePlugin::loaded('Layout');		//Only adds a close button if Layout plugin is also used
 		$params += compact('class');
 		return $params;
 	}
 
-	/**
-	 * Checks if Model can be searched by slug. If so, returns the slug field. 
-	 * Otherwise, returns false. 
-	 * Uses the Sluggable Behavior
-	 *
-	 * @param AppModel $Model Model to check
-	 * @return bool If successful
-	 **/
+/**
+ * Checks if Model can be searched by slug. If so, returns the slug field. 
+ * Otherwise, returns false. 
+ * Uses the Sluggable Behavior
+ *
+ * @param AppModel $Model Model to check
+ * @return bool If successful
+ **/
 	private function _isSluggable($Model) {
 		$return = false;
 		if (array_key_exists('Sluggable', $Model->actsAs)) {
@@ -646,14 +653,14 @@ class CrudComponent extends Component {
 		}
 	}
 	
-	/**
-	 * Checks to see if a controller method exists and calls it
-	 *
-	 * @param String $methodName The name of the method to call in the controller
-	 * @param [Mixed $...] Optional parameters to pass to method
-	 *
-	 * @return Boolean|NULL Returns the method if it exists, null if it does not
-	 **/
+/**
+ * Checks to see if a controller method exists and calls it
+ *
+ * @param String $methodName The name of the method to call in the controller
+ * @param [Mixed $...] Optional parameters to pass to method
+ *
+ * @return Boolean|NULL Returns the method if it exists, null if it does not
+ **/
 	private function callControllerMethod($methodName) {
 		$args = func_get_args();
 		array_shift($args);	//Removes method name
