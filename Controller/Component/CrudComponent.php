@@ -345,7 +345,7 @@ class CrudComponent extends Component {
 		$options = array(
 			'success' => array(
 				'message' => 'Updated ' . $modelHuman . ' info',
-				'redirect' => array('view', 'ID'),
+				'redirect' => array('action' => 'view', 'ID'),
 			),
 			'fail' => array(
 				'message' => 'Could not update ' . $modelHuman . ' info',
@@ -396,6 +396,9 @@ class CrudComponent extends Component {
 			
 			$message = $this->getPostSave($state, 'message', $use['message']);
 			$redirect = $this->getPostSave($state, 'redirect', $use['redirect']);
+
+			debug(compact('data', 'message', 'redirect'));
+			exit();
 
 			if (is_array($redirect)) {
 				if (($key = array_search('ID', $redirect, true)) !== false) {
