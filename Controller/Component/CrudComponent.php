@@ -397,9 +397,6 @@ class CrudComponent extends Component {
 			$message = $this->getPostSave($state, 'message', $use['message']);
 			$redirect = $this->getPostSave($state, 'redirect', $use['redirect']);
 
-			debug(compact('data', 'message', 'redirect'));
-			exit();
-
 			if (is_array($redirect)) {
 				if (($key = array_search('ID', $redirect, true)) !== false) {
 					$redirect[$key] = $Model->id;
