@@ -404,6 +404,7 @@ class FormDataComponent extends Component {
 				'message' => 'Could not update ' . $modelHuman . ' entry',
 			)
 		);
+
 		if ($returnOptions = $this->callControllerMethod('_setSaveDataOptions', $options)) {
 			$options = $returnOptions;
 		}
@@ -419,6 +420,7 @@ class FormDataComponent extends Component {
 			$data =& $this->controller->request->data;
 			$result = false;
 			$this->_storedData = $data;
+			//debug($data);
 			
 			if (($data = $this->beforeSaveData($data, $saveOptions)) !== false) {
 				if (!empty($data[$model]) && count($data) == 1) {
@@ -464,7 +466,7 @@ class FormDataComponent extends Component {
 					if (!empty($data['FormData']['redirectController'])) {
 						$redirect['controller'] = $data['FormData']['redirectController'];
 					}
-					$redirect = Router::url(array('base' => false) + $redirect);
+					$redirect = Router::url($redirect, true);
 				}
 			}
 			
@@ -473,7 +475,8 @@ class FormDataComponent extends Component {
 					'message' => $message,
 					'success' => !empty($result),
 					'url' => $redirect,
-					'id' => $this->id,
+					'id' => $Model->id,
+					'validation_errors' => $Model->validationErrors,
 				]);
 				exit();
 
