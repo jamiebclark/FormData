@@ -319,7 +319,7 @@ class CrudComponent extends Component {
 		}
 
 		if (!empty($id) || empty($query['conditions'])) {
-			if (!is_numeric($id) && ($slugField = $this->_isSluggable($this->Model))) {
+			if (!is_numeric($id) && ($slugField = $this->_getSluggableField($this->Model))) {
 				//Searches by slug
 				$conditions = array($this->Model->escapeField($slugField) . ' LIKE' => $id);
 			} else {
@@ -794,12 +794,11 @@ class CrudComponent extends Component {
  * @param AppModel $Model Model to check
  * @return bool If successful
  **/
-	private function _isSluggable($Model) {
-		$return = false;
-		if (array_key_exists('Sluggable', $Model->actsAs)) {
-			$return = !empty($Model->actsAs['Sluggable']['slugColumn']) ? $Model->actsAs['Sluggable']['slugColumn'] : 'slug';
+	private function _getSluggableField($Model) {
+		if ($Model->hasMethod('getSluggableField')) {
+			return $Model->getSluggableField();
 		}
-		return $return;
+		return false;
 	}
 	
 	private function _checkCaptcha($data) {
