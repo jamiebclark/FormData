@@ -767,7 +767,7 @@ class FormDataComponent extends Component {
 		if ($type == 'ajax') {
 			return !empty($this->controller->request) && $this->controller->request->is('ajax');
 		}
-		return $this->controller->RequestHandler->prefers($type);
+		return $this->RequestHandler->prefers($type);
 	}
 
 	private function _checkCaptcha($data) {
