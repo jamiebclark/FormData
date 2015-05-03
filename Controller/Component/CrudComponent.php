@@ -385,9 +385,10 @@ class CrudComponent extends Component {
 
 	protected function readData($id, $read, $query) {
 		$data = $this->read($id, $read, $query);
+		// Converts any HABTM data into an array of only the IDs
 		foreach ($this->Model->hasAndBelongsToMany as $associated => $joins) {
-			if (!empty($data[$associated][0]['id'])) {
-				$ids = Hash::extract($data, $associated . '.{n}.id');
+			if (!empty($data[$associated][0][$this->Model->primaryKey])) {
+				$ids = Hash::extract($data, $associated . '.{n}.' . $this->Model->primaryKey);
 				$data[$associated] = array($associated => $ids);
 			}
 		}
