@@ -9,7 +9,7 @@ App::uses('Debugger', 'Utility');
 
 class FormDataComponent extends Component {
 	public $name = 'FormData';
-	public $components = array('Session', 'RequestHandler');
+	public $components = array('Session', 'RequestHandler', 'FormData.JsonResponse');
 	
 	public $controller;
 	public $settings = array();
@@ -471,15 +471,13 @@ class FormDataComponent extends Component {
 			}
 			
 			if ($this->isAjax) {
-				echo json_encode([
-					'message' => $message,
-					'success' => !empty($result),
-					'url' => $redirect,
-					'id' => $Model->id,
-					'validation_errors' => $Model->validationErrors,
-				]);
-				exit();
-
+				$this->JsonResponse->respond(
+					$message,
+					!empty($result),
+					$redirect,
+					$Model->id,
+					$Model->validationErrors
+				);
 			} else {
 				if (!$result) {
 					//debug($Model->alias);

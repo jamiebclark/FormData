@@ -631,13 +631,12 @@ class CrudComponent extends Component {
 			// Executes wrapup
 			if ($this->isAjax) {
 				// Only outputs JSON if call was AJAX
-				echo json_encode([
-					'message' => $message,
-					'success' => !empty($result),
-					'url' => Router::url($redirect, true),
-					'id' => $this->Model->id,
-				]);
-				exit();
+				$this->JsonResponse->respond(
+					$message,
+					!empty($result),
+					Router::url($redirect, true),
+					$this->Model->id
+				);
 			} else {
 				if (!empty($message)) {
 					$this->flash($message, $result ? self::SUCCESS : self::ERROR);
