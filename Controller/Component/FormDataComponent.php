@@ -54,7 +54,7 @@ class FormDataComponent extends Component {
 		}
 
 		$this->isAjax = $this->isRequestType(['ajax']);
-		$this->setSuccessRedirect(array('action' => 'view', 'ID'));
+		//$this->setSuccessRedirect(array('action' => 'view', 'ID'));
 	}
 
 	public function beforeFilter(Controller $controller) {
@@ -451,6 +451,11 @@ class FormDataComponent extends Component {
 			//Loads default message and redirect values
 			$state = $result ? 'success' : 'fail';
 			$use = $options[$state] + array('message' => null, 'redirect' => null);
+
+			// Sets default redirect back to view on success
+			if ($state === 'success' && empty($use['redirect']) && $use['redirect'] !== false) {
+				$use['redirect'] = array('action' => 'view', 'ID');
+			}
 			
 			$message = $this->getPostSave($state, 'message', $use['message']);
 			$redirect = $this->getPostSave($state, 'redirect', $use['redirect']);
