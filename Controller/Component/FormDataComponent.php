@@ -249,6 +249,7 @@ class FormDataComponent extends Component {
 		if ($vars = $this->callControllerMethod('_setFindModelOptions', $options)) {
 			$options = $vars;
 		}
+
 		if (!empty($method) && method_exists($Model, $method)) {
 			if (!empty($passIdToMethod)) {
 				$result = $Model->{$method}($this->id, $options);
@@ -386,7 +387,7 @@ class FormDataComponent extends Component {
 		}
 		if (isset($this->controller->{$model})) {
 			$Model =& $this->controller->{$model};
-		} else if (!$Model = ClassRegistry::init($model)) {
+		} else if (!$Model = ClassRegistry::init($model, true)) {
 			debug("$model not found");
 		}
 		
@@ -421,7 +422,7 @@ class FormDataComponent extends Component {
 			$result = false;
 			$this->_storedData = $data;
 			//debug($data);
-			
+
 			if (($data = $this->beforeSaveData($data, $saveOptions)) !== false) {
 				if (!empty($data[$model]) && count($data) == 1) {
 					if (empty($data[$model][0])) {
@@ -454,12 +455,16 @@ class FormDataComponent extends Component {
 
 			// Sets default redirect back to view on success
 			if ($state === 'success' && empty($use['redirect']) && $use['redirect'] !== false) {
-				$use['redirect'] = array('action' => 'view', 'ID');
+				$use['redirect'] = array(
+					'controller' => Inflector::tableize($Model->alias),
+					'action' => 'view', 
+					'ID'
+				);
 			}
 			
 			$message = $this->getPostSave($state, 'message', $use['message']);
 			$redirect = $this->getPostSave($state, 'redirect', $use['redirect']);
-
+		
 			if (!empty($redirect)) {
 				if (is_array($redirect)) {
 					if (($key = array_search('ID', $redirect, true)) !== false) {

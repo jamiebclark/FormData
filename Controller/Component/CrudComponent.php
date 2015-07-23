@@ -155,7 +155,11 @@ class CrudComponent extends Component {
 		
 		$this->isAjax = $this->isRequestType(['ajax']);
 
-		$this->setModelClass($controller->modelClass);
+		$modelClass = $controller->modelClass;
+		if (!empty($controller->plugin)) {
+			$modelClass = $controller->plugin . '.' . $modelClass;
+		}
+		$this->setModelClass($modelClass);
 	}
 
 /**
@@ -165,11 +169,14 @@ class CrudComponent extends Component {
  * @return void
  **/
 	public function setModelClass($modelClass) {
-		$this->modelClass = $modelClass;
+		list($plugin, $model) = pluginSplit($modelClass);
 
-		$controller = Inflector::tableize($this->modelClass);
-		$this->modelVariable = Inflector::variable($modelClass);
+		$this->modelClass = $model;
+
+		$controller = Inflector::tableize($this->model);
+		$this->modelVariable = Inflector::variable($model);
 		$this->modelHuman = Inflector::humanize(Inflector::singularize($controller));
+		$this->modelPlugin = $plugin;
 
 		$this->Model = ClassRegistry::init($modelClass, true);
 	}
@@ -677,10 +684,10 @@ class CrudComponent extends Component {
 			$defaultReferer = array('action' => 'index');
 		}
 		$defaults = array(
-			'model' => $this->modelClass,	//The Model it will be pulling the result from
-			'redirect' => $defaultReferer,			//Where to redirect if not found
-			'method' => null,						//Specify a method other than find('first',...)
-			'passIdToMethod' => false,				//If custom method requires an Id as the first argument
+			'model' => $this->modelClass,			// The Model it will be pulling the result from
+			'redirect' => $defaultReferer,			// Where to redirect if not found
+			'method' => null,						// Specify a method other than find('first',...)
+			'passIdToMethod' => false,				// If custom method requires an Id as the first argument
 		);
 		//Allows for controller overwrite function
 		if (method_exists($this->controller, '_setCrudReadAttrs')) {
@@ -977,18 +984,19 @@ class CrudComponent extends Component {
 	protected function formRender($view = null) {
 		if ($view !== false) {
 			if (empty($view) || $view === true) {
+				// Finds the default form element
 				$view = DS . 'Elements' . DS . Inflector::tableize($this->modelClass) . DS . 'form';
 				if ($this->Model->plugin) {
 					$view = $this->Model->plugin . '.' . $view;
 				}
 			}
+			list($plugin, $pluginView) = pluginSplit($view);
+			$path = $this->_getViewFilePath($view);
 
-			list($plugin, $view) = pluginSplit($view);
-
-			if (!empty($plugin)) {
-				$path = APP . 'Plugin' . DS . 'View' . DS . $this->Model->plugin . DS . $view . '.ctp';
-			} else {
-				$path = APP . 'View' . DS . $view . '.ctp';
+			// Prepends plugin if regular view hadn't been found
+			if (!is_file($path) && empty($plugin) && !empty($this->Model->plugin)) {
+				$view = $this->Model->plugin . '.' . $view;
+				$path = $this->_getViewFilePath($view);
 			}
 
 			if (is_file($path)) {
@@ -998,4 +1006,19 @@ class CrudComponent extends Component {
 		return null;
 	}
 
+/**
+ * Returns the file path of the view
+ *
+ * @param string $view The view file
+ * @return string;
+ **/
+	private function _getViewFilePath($view = null) {
+		list($plugin, $view) = pluginSplit($view);
+		if (!empty($plugin)) {
+			$path = APP . 'Plugin' . DS . $this->Model->plugin . DS . 'View' . DS . $view . '.ctp';
+		} else {
+			$path = APP . 'View' . DS . $view . '.ctp';
+		}
+		return $path;
+	}
 }
