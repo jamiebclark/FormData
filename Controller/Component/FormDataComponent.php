@@ -395,10 +395,11 @@ class FormDataComponent extends Component {
 			return null;
 		}
 		
+		list($plugin, $model) = pluginSplit($model);
 		$modelHuman = Inflector::humanize(Inflector::tableize($model));
 		$options = array(
 			'success' => array(
-				'message' => 'Updated ' . $modelHuman . ' info',
+				'message' => 'Updated ' . $modelHuman . ' entry',
 				'redirect' => null,
 			),
 			'fail' => array(
