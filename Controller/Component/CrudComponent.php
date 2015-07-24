@@ -178,7 +178,10 @@ class CrudComponent extends Component {
 		$this->modelHuman = Inflector::humanize(Inflector::singularize($controller));
 		$this->modelPlugin = $plugin;
 
-		$this->Model = ClassRegistry::init($modelClass, true);
+		if (!($this->Model = ClassRegistry::init($modelClass, true))) {
+			throw new Exception("Could not set model: $modelClass");
+		}
+
 	}
 
 	public function beforeFilter(Controller $controller) {
@@ -556,6 +559,13 @@ class CrudComponent extends Component {
 		$alias = $this->Model->alias;
 		$primaryKey = $this->Model->primaryKey;
 
+		// Makes sure there's a clean merge betwen redirect URLs
+		foreach (array('success', 'fail') as $key) {
+			if (!empty($options[$key]['redirect'])) {
+				$defaultOptions[$key]['redirect'] = $options[$key]['redirect'];
+				unset($options[$key]['redirect']);
+			}
+		}
 		$options = Hash::merge($defaultOptions, $options);
 
 		// Copies any saveOptions fields from options
@@ -634,7 +644,7 @@ class CrudComponent extends Component {
 					$redirect[$key] = $this->Model->id;
 				}
 			}
-			
+
 			// Executes wrapup
 			if ($this->isAjax) {
 				// Only outputs JSON if call was AJAX
