@@ -302,7 +302,10 @@ class CrudComponent extends Component {
 			$this->setData($options['default'], true);
 		}		
 		$this->setFormElements();
-		$this->formRender(isset($options['view']) ? $options['view'] : null);
+		$view = isset($options['view']) ? $options['view'] : null;
+		if ($view !== true) {
+			$this->formRender();
+		}
 		return $result;
 	}
 	
