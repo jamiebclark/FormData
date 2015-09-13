@@ -1,4 +1,6 @@
 <?php
+App::uses('Hash', 'Utility');
+
 class CrudComponent extends Component {
 	public $name = 'Crud';
 
@@ -535,7 +537,8 @@ class CrudComponent extends Component {
 			$this->controller->disableCache();
 		}
 		
-		if (!empty($options['bypassSave'])) {
+		if (!empty($this->request->data['bypass_save']) || !empty($options['bypassSave'])) {
+			unset($this->request->data['bypass_save']);
 			return null;
 		}
 
@@ -729,12 +732,14 @@ class CrudComponent extends Component {
 	}
 	
 	function setData($setData = array(), $reset = false) {
-		$data =& $this->controller->request->data;
+		$data = $this->controller->request->data;
 		if (!$reset && !empty($data)) {
 			$data = $this->array_merge_data($data, $setData);
 		} else {
-			$data = $setData;
+			$data = Hash::merge($data, $setData);
 		}
+
+		$this->request->data = $data;
 		return true;
 	}
 	
@@ -997,11 +1002,7 @@ class CrudComponent extends Component {
 	protected function formRender($view = null) {
 		if ($view !== false) {
 			if (empty($view) || $view === true) {
-				// Finds the default form element
-				$view = DS . 'Elements' . DS . Inflector::tableize($this->modelClass) . DS . 'form';
-				if ($this->Model->plugin) {
-					$view = $this->Model->plugin . '.' . $view;
-				}
+				$view = $this->getDefaultView();
 			}
 			list($plugin, $pluginView) = pluginSplit($view);
 			$path = $this->_getViewFilePath($view);
@@ -1017,6 +1018,30 @@ class CrudComponent extends Component {
 			}
 		}
 		return null;
+	}
+
+/**
+ * Checks for the default rendering view path
+ *
+ * Looks first at the default action, and then second in the Elements directory
+ * @return string The view;
+ **/
+	private function getDefaultView() {
+		$defaultViews = array(
+			DS . Inflector::pluralize($this->modelClass) . DS . $this->controller->params->action,
+			DS . 'Elements' . DS . Inflector::tableize($this->modelClass) . DS . 'form',
+		);
+		$view = null;
+		foreach ($defaultViews as $view) {
+			if ($this->Model->plugin) {
+				$view = $this->Model->plugin . '.' . $view;
+			}
+			$path = $this->_getViewFilePath($view);
+			if (is_file($path)) {
+				break;
+			}
+		}
+		return $view;
 	}
 
 /**
