@@ -9,7 +9,7 @@ class CrudComponent extends Component {
  * 
  * @var array
  **/
-	public $components = array('Session', 'RequestHandler');
+	public $components = array('Session', 'RequestHandler', 'FormData.JsonResponse');
 
 /**
  * Reference to the instantiating controller object
