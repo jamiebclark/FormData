@@ -538,12 +538,13 @@ class FormDataComponent extends Component {
 	public function deleteData($id, $options = array()) {
 		$redirect = $this->controller->referer();
 		$referParams = Router::parse($this->controller->referer(null, true));
+
+		// Ensures it doesn't redirect to a view that references the deleted value
 		if (
 			$redirect == '/' || (
 				!empty($referParams['controller']) && 
 				$referParams['controller'] == $this->controller->request->params['controller'] && 
-				!empty($referParams['action']) && 
-				$referParams['action'] == 'view' && (
+				(
 					(!empty($referParams['pass']) && $referParams['pass'][0] == $id) ||
 					(!empty($referParams['named']['id']) && $referParams['named']['id'] == $id)
 				)
