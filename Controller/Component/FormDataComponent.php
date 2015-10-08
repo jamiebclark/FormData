@@ -391,7 +391,8 @@ class FormDataComponent extends Component {
 			debug("$model not found");
 		}
 		
-		if (!empty($passedOptions['bypassSave'])) {
+		if (!empty($passedOptions['bypassSave']) || !empty($this->controller->request->data['bypass_save'])) {
+			unset($this->controller->request->data['bypass_save']);
 			return null;
 		}
 		
