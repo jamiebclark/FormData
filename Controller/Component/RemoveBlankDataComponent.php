@@ -47,13 +47,23 @@ class RemoveBlankDataComponent extends Component {
  **/
 	public function process($config = array()) {
 		$data = $this->controller->request->data;
-		foreach ($config as $className => $options) {
-			unset($config[$className]);
-			if (is_numeric($className)) {
-				$className = $options;
+		foreach ($config as $alias => $options) {
+			unset($config[$alias]);
+			if (is_numeric($alias)) {
+				$alias = $options;
 				$options = array();
 			}
+			if (!empty($options['className'])) {
+				$className = $options['className'];
+				unset($options['className']);
+			} else {
+				$className = $alias;
+			}
+
 			$Model = ClassRegistry::init($className);
+			$options['alias'] = $alias;
+
+
 			if (empty($options)) {
 				$options = array($Model->displayField);
 			}
@@ -80,7 +90,7 @@ class RemoveBlankDataComponent extends Component {
  * @return array The updated data array
  **/
 	private function findAndRemoveBlankData($Model, $data, $options) {
-		$alias = $Model->alias;
+		$alias = !empty($options['alias']) ? $options['alias'] : $Model->alias;
 		// Finds appropriate spot in data
 		if (array_key_exists($alias, $data)) {
 			$data[$alias] = $this->removeBlankData($Model, $data[$alias], $options);
