@@ -708,8 +708,24 @@ class FormDataComponent extends Component {
 		return $this->flash($msg, 'info');
 	}
 	
-	public function flash($msg, $type = 'info') {
-		$this->Session->setFlash(__($msg), self::FLASH_ELEMENT, $this->_flashParams($type));
+	public function flash($msg, $type = self::INFO) {
+		$element = $this->settings['overwriteFlash'] ? self::FLASH_ELEMENT : 'default';
+		$params = $this->_flashParams($type);
+		// Uses the new Flash Component if present
+		if (!empty($this->controller->Flash)) {
+			$paramKeys = ['element', 'key'];
+			$attrs = [];
+			if (!empty($params['key'])) {
+				$attrs['key'] = $params['key'];
+			}
+			if (!empty($params['plugin'])) {
+				$element = $params['plugin'] . '.' . $element;
+			}
+			$attrs = compact('element', 'params');
+			return $this->controller->Flash->set(__($msg), $attrs);
+		} else {
+			return $this->Session->setFlash(__($msg), $element, $params);
+		}
 	}
 	
 /**
