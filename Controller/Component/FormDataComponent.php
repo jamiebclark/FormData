@@ -492,8 +492,10 @@ class FormDataComponent extends Component {
 				);
 			} else {
 				if (!$result) {
+					//debug($data);
 					//debug($Model->alias);
 					//debug($Model->invalidFields());
+					//exit();
 				}
 				if (!empty($message)) {
 					$this->flash($message, $result ? 'success' : 'danger');
