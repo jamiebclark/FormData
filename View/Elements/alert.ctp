@@ -7,6 +7,7 @@ if (!isset($close)) {
 }
 ?>
 <div id="formdata-alert" class="alert<?php echo ($class) ? ' ' . $class : null; ?>">
+	<h1>ALERT</h1>
 	<?php echo $message; ?>
 </div>
 

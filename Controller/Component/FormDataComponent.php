@@ -9,7 +9,7 @@ App::uses('Debugger', 'Utility');
 
 class FormDataComponent extends Component {
 	public $name = 'FormData';
-	public $components = array('Session', 'RequestHandler', 'FormData.JsonResponse');
+	public $components = array('Flash', 'Session', 'RequestHandler', 'FormData.JsonResponse');
 	
 	public $controller;
 	public $settings = array();
@@ -435,6 +435,7 @@ class FormDataComponent extends Component {
 				} else {
 					$result = $Model->saveAll($data, $saveOptions);
 				}
+
 				$created = !empty($data[$model]) ? empty($data[$model][$Model->primaryKey]) : empty($data[$Model->primaryKey]);
 				if ($result) {
 					$this->afterSaveData($created);
@@ -713,21 +714,23 @@ class FormDataComponent extends Component {
 	public function flash($msg, $type = self::INFO) {
 		$element = $this->settings['overwriteFlash'] ? self::FLASH_ELEMENT : 'default';
 		$params = $this->_flashParams($type);
+
+		debug([
+			'hasFlash' => !empty($this->controller->Flash),
+			'element' => $element,
+			'params' => $params,
+		]);
+		
 		// Uses the new Flash Component if present
-		if (!empty($this->controller->Flash)) {
-			$paramKeys = ['element', 'key'];
-			$attrs = [];
-			if (!empty($params['key'])) {
-				$attrs['key'] = $params['key'];
-			}
-			if (!empty($params['plugin'])) {
-				$element = $params['plugin'] . '.' . $element;
-			}
-			$attrs = compact('element', 'params');
-			return $this->controller->Flash->set(__($msg), $attrs);
-		} else {
-			return $this->Session->setFlash(__($msg), $element, $params);
+		$paramKeys = ['element', 'key'];
+		if (!empty($params['plugin'])) {
+			$element = $params['plugin'] . '.' . $element;
 		}
+		$attrs = compact('element', 'params');
+		if (!empty($params['key'])) {
+			$attrs['key'] = $params['key'];
+		}
+		return $this->Flash->set(__($msg), $attrs);
 	}
 	
 /**
