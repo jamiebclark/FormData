@@ -715,12 +715,6 @@ class FormDataComponent extends Component {
 		$element = $this->settings['overwriteFlash'] ? self::FLASH_ELEMENT : 'default';
 		$params = $this->_flashParams($type);
 
-		debug([
-			'hasFlash' => !empty($this->controller->Flash),
-			'element' => $element,
-			'params' => $params,
-		]);
-		
 		// Uses the new Flash Component if present
 		$paramKeys = ['element', 'key'];
 		if (!empty($params['plugin'])) {
