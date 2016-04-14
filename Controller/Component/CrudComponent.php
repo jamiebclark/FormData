@@ -184,7 +184,7 @@ class CrudComponent extends Component {
 		$this->modelPlugin = $plugin;
 
 		if (!($this->Model = ClassRegistry::init($modelClass, true))) {
-			throw new Exception("Could not set model: $modelClass");
+			return false;
 		}
 
 	}
