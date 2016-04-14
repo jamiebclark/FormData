@@ -285,6 +285,11 @@ class CrudComponent extends Component {
 						$flash['params']
 					);
 				}
+				list($plugin, $element) = pluginSplit($flash['element']);
+				if (!empty($plugin)) {
+					$flash['params']['plugin'] = $plugin;
+					$flash['element'] = $element;
+				}
 				$this->Session->write("$session.$var", $flash);
 			}
 		}	
