@@ -134,6 +134,7 @@ class CrudComponent extends Component {
 		$settings = array_merge(array(
 			'overwriteFlash' => true,		// Whether or not to overwrite the default flash element
 			'postDelete' => 	false,		// If true, will only delete from a post request type
+			'active' => 		true,
 		), $settings);
 		return parent::__construct($collection, $settings);			
 	}
@@ -161,7 +162,9 @@ class CrudComponent extends Component {
 		if (!empty($controller->plugin)) {
 			$modelClass = $controller->plugin . '.' . $modelClass;
 		}
-		$this->setModelClass($modelClass);
+		if (!empty($this->settings['active'])) {
+			$this->setModelClass($modelClass);
+		}
 	}
 
 /**
