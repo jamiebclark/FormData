@@ -8,15 +8,18 @@ if (!empty($params)) {
 }
 extract(array_merge($default, compact(array_keys($default))));
 
+if (empty($class)) {
+	$class = 'alert-info';
+}
+
 ?>
-<div id="formdata-alert" class="alert<?php echo ($class) ? ' ' . $class : null; ?>">
+<div id="formdata-alert" class="alert <?php echo $class; ?>">
 	<?php echo $message; ?>
 </div>
 
 <?php $this->Html->scriptStart(array('inline' => false)); ?>
 $(document).ready(function() {
 	$('#formdata-alert').each(function() {
-		console.log("Found");
 		var $alert = $(this),
 			$body = $('.media-body', $alert),
 			$close = $('<a></a>', {

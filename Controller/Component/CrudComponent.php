@@ -174,7 +174,9 @@ class CrudComponent extends Component {
 		if (!empty($controller->plugin)) {
 			$modelClass = $controller->plugin . '.' . $modelClass;
 		}
-		$this->setModelClass($modelClass);
+		if (!empty($this->settings['active'])) {
+			$this->setModelClass($modelClass);
+		}
 	}
 
 /**
@@ -340,6 +342,11 @@ class CrudComponent extends Component {
 						!empty($flash['params']['type']) ? $flash['params']['type'] : null,
 						$flash['params']
 					);
+				}
+				list($plugin, $element) = pluginSplit($flash['element']);
+				if (!empty($plugin)) {
+					$flash['params']['plugin'] = $plugin;
+					$flash['element'] = $element;
 				}
 				$this->Session->write("$session.$var", $flash);
 			}
