@@ -95,6 +95,13 @@ class CrudComponent extends Component {
 	public $settings = array();
 
 /**
+ * Determines if the response should be in JSON or not
+ *
+ * @var bool
+ **/
+	public $jsonResponse;
+
+/**
  * Whether the call is an Ajax call
  *
  * @var bool
@@ -132,8 +139,9 @@ class CrudComponent extends Component {
 
 	public function __construct(ComponentCollection $collection, $settings = array()) {
 		$settings = array_merge(array(
-			'overwriteFlash' => true,		// Whether or not to overwrite the default flash element
-			'postDelete' => 	false,		// If true, will only delete from a post request type
+			'overwriteFlash' 	=> true,		// Whether or not to overwrite the default flash element
+			'postDelete' 		=> false,		// If true, will only delete from a post request type
+			'respond'			=> null,
 		), $settings);
 		return parent::__construct($collection, $settings);			
 	}
@@ -156,6 +164,11 @@ class CrudComponent extends Component {
 		$this->_refererParts = Router::parse($controller->referer(null, true));
 		
 		$this->isAjax = $this->isRequestType(['ajax']);
+		if ($this->settings['respond'] == 'json') {
+			$this->jsonResponse = true;
+		} else if (!isset($this->jsonResponse)) {
+			$this->jsonResponse = $this->isAjax;
+		}
 
 		$modelClass = $controller->modelClass;
 		if (!empty($controller->plugin)) {
@@ -269,6 +282,49 @@ class CrudComponent extends Component {
 	}
 #endsection
 
+	public function getFormDefaults() {
+		return $this->callControllerMethod('_getFormDefaults');
+	}
+
+	public function getFormElements() {
+		$formElements = [];
+		if (method_exists($this->controller, '_setFormElements')) {
+			$oViewVars = $this->controller->viewVars;
+			$this->controller->_setFormElements();
+			$formElements = array_diff_key($this->controller->viewVars, $oViewVars);
+		}
+		if ($this->jsonResponse) {
+			$formElements = $this->wrapListChildren($formElements);
+		}
+
+		return $formElements;
+	}
+
+/**
+ * Wraps every array value in another array
+ * Prevents sorting of JSON keys
+ *
+ * @param array $list;
+ * @return array;
+ **/
+	private function wrapList($list) {
+		if (is_array($list)) {
+			$newList = [];
+			foreach ($list as $key => $v) {
+				$newList[] = ['key' => $key, 'value' => $this->wrapList($v)];
+			}
+			$list = $newList;
+		}
+		return $list;
+	}
+
+	private function wrapListChildren($list) {
+		foreach ($list as $k => $v) {
+			$list[$k] = $this->WrapList($v);
+		}
+		return $list;
+	}
+
 	private function overwriteFlash() {
 		//Overwrites the current Flash setup
 		$session = 'Message';
@@ -300,6 +356,10 @@ class CrudComponent extends Component {
  */
 	public function create($options = array(), $saveAttrs = array(), $saveOptions = array()) {
 		$result = $this->save($saveAttrs, $saveOptions);
+		if ($default = $this->getFormDefaults()) {
+			$oDefault = !empty($options['default']) ? $options['default'] : [];
+			$options['default'] = Hash::merge($default, (array) $oDefault);
+		}
 		if ($result === null && !empty($options['default'])) {
 			$this->setData($options['default'], true);
 		}		
@@ -310,6 +370,8 @@ class CrudComponent extends Component {
 		}
 		return $result;
 	}
+
+
 	
 /**
  * Reads a single model row. Usually used with the "view" controller method
@@ -514,8 +576,12 @@ class CrudComponent extends Component {
 			}
 		}
 
-		if ($this->isAjax) {
-			echo round ($success);
+		if ($this->jsonResponse) {
+			$this->JsonResponse->respond(
+				$message,
+				$success,
+				Router::url($redirect, true)
+			);
 		} else {
 			$this->flash($message, $type);
 			$this->redirect($redirect);
@@ -588,6 +654,7 @@ class CrudComponent extends Component {
 			$data =& $this->request->data;
 			$result = false;
 			$this->_storedData = $data;
+			$validationErrorList = [];
 
 			// HABTM Updates
 			foreach ($this->Model->hasAndBelongsToMany as $associated => $join) {
@@ -627,6 +694,7 @@ class CrudComponent extends Component {
 					$this->afterFailedSaveData();
 					$this->_log('Save Failed');
 					$validationErrors = $this->_getValidationErrors();
+					$validationErrorList = $this->_getValidationErrorList();
 				}
 			} else {
 				$result = false;
@@ -642,7 +710,9 @@ class CrudComponent extends Component {
 			$redirect = $this->getPostSave($state, 'redirect', $use['redirect']);
 
 			if (!empty($validationErrors)) {
-				$message .= $validationErrors;
+				// $message .= $validationErrors;
+			} else {
+				$validationErrors = [];
 			}
 
 			if (is_array($redirect)) {
@@ -652,13 +722,14 @@ class CrudComponent extends Component {
 			}
 
 			// Executes wrapup
-			if ($this->isAjax) {
+			if ($this->jsonResponse) {
 				// Only outputs JSON if call was AJAX
 				$this->JsonResponse->respond(
 					$message,
 					!empty($result),
 					Router::url($redirect, true),
-					$this->Model->id
+					$this->Model->id,
+					$data //$validationErrorList + ['Model: ' . $this->Model->alias]
 				);
 			} else {
 				if (!empty($message)) {
@@ -932,6 +1003,11 @@ class CrudComponent extends Component {
  * @return string 
  **/
 	private function _getValidationErrors() {
+		$validationErrors = $this->_getValidationErrorList();
+		return "<ul><li>" . implode('</li><li>', $validationErrors) . "</li></ul>";
+	}
+
+	private function _getValidationErrorList() {
 		$models = ClassRegistry::keys();
 		$validationErrors = array();
 		foreach ($models as $currentModel) {
@@ -944,9 +1020,9 @@ class CrudComponent extends Component {
 		if (empty($validationErrors)) {
 			return '';
 		}
-		$validationErrors = Hash::flatten($validationErrors);
-		return "<ul><li>" . implode('</li><li>', $validationErrors) . "</li></ul>";
+		return Hash::flatten($validationErrors);		
 	}
+
 /**
  * Sets a url to be redirected
  * 
