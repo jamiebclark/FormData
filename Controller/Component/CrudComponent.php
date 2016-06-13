@@ -142,6 +142,7 @@ class CrudComponent extends Component {
 			'overwriteFlash' 	=> true,		// Whether or not to overwrite the default flash element
 			'postDelete' 		=> false,		// If true, will only delete from a post request type
 			'respond'			=> null,
+			'active'			=> true
 		), $settings);
 		return parent::__construct($collection, $settings);			
 	}
