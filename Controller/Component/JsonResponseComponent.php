@@ -24,8 +24,7 @@ class JsonResponseComponent extends Component {
  * @return string A JSON-encoded list of data
  **/
 	public function respond($message, $success = true, $redirect = null, $id = null, $errors = array()) {
-		echo $this->response($message, $success, $redirect, $id, $errors);
-		exit();
+		$this->_render($this->response($message, $success, $redirect, $id, $errors));
 	}
 
 
@@ -85,7 +84,12 @@ class JsonResponseComponent extends Component {
 		}
 		$json = $this->get();
 		unset($json['_serialize']);
-		echo json_encode($json);
+		$this->_render(json_encode($json));
+	}
+
+	private function _render($content) {
+		header('Content-Type: application/json');
+		echo $content;
 		exit();
 	}
 }

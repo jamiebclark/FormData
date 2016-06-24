@@ -109,6 +109,7 @@ class CrudComponent extends Component {
 	protected $isAjax = false;
 	
 	private $_log = array();
+	public static $_errors = [];
 
 /**
  * Maintains a copy of the request data before it's manipulated by the component
@@ -231,11 +232,6 @@ class CrudComponent extends Component {
 			return false;
 		} else if (!empty($callResult)) {
 			$data = $callResult;
-		}
-		if (($data = $this->_checkCaptcha($data)) === false) {
-			$this->_log('CheckCaptcha Failed');
-			$this->_log($data);
-			return false;
 		}
 		return $data;
 	}
@@ -596,6 +592,21 @@ class CrudComponent extends Component {
 		}
 	}
 	
+	public static function errorHandler($code, $message, $file = null, $line = null) {
+		if (!empty($file)) {
+			self::$_errors[] = sprintf('Error: %s in file `%s` on line %s', $message, $file, $line);
+		} else {
+			self::$_errors[] = sprintf('Error: %s', $code);
+		}
+	}
+
+	public static function fatalErrorShutdownHandler() {
+		$lastError = error_get_last();
+		if ($lastError['type'] === E_ERROR) {
+			// fatal error
+			self::errorHandler(E_ERROR, $lastError['message'], $lastError['file'], $lastError['line']);
+		}
+	}
 	
 /**
  * Handles the basic code appearing at the top of any add or edit controller function
@@ -607,6 +618,9 @@ class CrudComponent extends Component {
  * @return bool/null True if success, false if failed, null if no data present
  **/
 	public function save($options = array(), $saveOptions = array()) {
+		if ($this->jsonResponse) {
+			set_error_handler(['CrudComponent', 'errorHandler']);
+		}
 		if (!empty($this->controller)) {
 			$this->controller->disableCache();
 		}
@@ -657,12 +671,15 @@ class CrudComponent extends Component {
 			}
 		}
 
+		$validationErrorList = [];
+		$saveErrors = [];
+
 		// Checks for passed data
 		if (!empty($this->request->data)) {
 			$data =& $this->request->data;
 			$result = false;
 			$this->_storedData = $data;
-			$validationErrorList = [];
+
 
 			// HABTM Updates
 			foreach ($this->Model->hasAndBelongsToMany as $associated => $join) {
@@ -683,16 +700,25 @@ class CrudComponent extends Component {
 			// Before save
 			if (($data = $this->beforeSaveData($data, $saveOptions)) !== false) {
 				// Saves data
-				if (!empty($data[$alias]) && count($data) == 1) {
-					if (!empty($data[$alias][0])) {
-						$result = $this->Model->save($data[$alias], $saveOptions);
+				try {
+					if (!empty($data[$alias]) && count($data) == 1) {
+						if (!empty($data[$alias][0])) {
+							$result = $this->Model->save($data[$alias], $saveOptions);
+						} else {
+							$result = $this->Model->saveAll($data[$alias], $saveOptions);
+						}
 					} else {
-						$result = $this->Model->saveAll($data[$alias], $saveOptions);
+						$result = $this->Model->saveAll($data, $saveOptions);
 					}
-				} else {
-					$result = $this->Model->saveAll($data, $saveOptions);
+					$created = !empty($data[$alias]) ? empty($data[$alias][$primaryKey]) : empty($data[$primaryKey]);
+				} catch (Exception $e) {
+					if (true || $this->jsonResponse) {
+						$result = false;
+						$saveErrors[] = $e->getMessage();
+					} else {
+						throw($e);
+					}
 				}
-				$created = !empty($data[$alias]) ? empty($data[$alias][$primaryKey]) : empty($data[$primaryKey]);
 
 				// After save
 				if ($result) {
@@ -717,9 +743,7 @@ class CrudComponent extends Component {
 			$message = $this->getPostSave($state, 'message', $use['message']);
 			$redirect = $this->getPostSave($state, 'redirect', $use['redirect']);
 
-			if (!empty($validationErrors)) {
-				// $message .= $validationErrors;
-			} else {
+			if (empty($validationErrors)) {
 				$validationErrors = [];
 			}
 
@@ -729,6 +753,8 @@ class CrudComponent extends Component {
 				}
 			}
 
+			//mail('jamie@souperbowl.org', "LOG", implode("\n", $this->getLog()));
+
 			// Executes wrapup
 			if ($this->jsonResponse) {
 				// Only outputs JSON if call was AJAX
@@ -737,7 +763,13 @@ class CrudComponent extends Component {
 					!empty($result),
 					Router::url($redirect, true),
 					$this->Model->id,
-					$data //$validationErrorList + ['Model: ' . $this->Model->alias]
+					Hash::merge(
+						['Log' => (array) $this->getLog()],
+						['Errors' => (array) $this->_errors], 
+						['Save' => (array) $saveErrors], 
+						['Validation' => (array) $validationErrorList], 
+						['Model: ' . $this->Model->alias]
+					)
 				);
 			} else {
 				if (!empty($message)) {
@@ -913,24 +945,6 @@ class CrudComponent extends Component {
 			return $Model->getSluggableField();
 		}
 		return false;
-	}
-	
-	private function _checkCaptcha($data) {
-		$this->_log($data);
-		if (!isset($data[$this->modelClass])) {
-			return false;
-		}
-		$checkData = $data[$this->modelClass];
-		$this->_log($checkData);
-		if (!empty($this->controller->Captcha) && is_object($this->controller->Captcha) && empty($checkData['captcha_valid'])) {
-			$checkData = $this->controller->Captcha->validateData($checkData, true);
-			if (isset($checkData['captcha_valid']) && !$checkData['captcha_valid']) {
-				$this->_storedData[$this->modelClass] = $checkData;
-				return false;
-			}
-		}
-		$data[$this->modelClass] = $checkData;
-		return $data;
 	}
 	
 	function _log($msg) {

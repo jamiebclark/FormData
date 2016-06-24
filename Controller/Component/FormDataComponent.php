@@ -87,11 +87,6 @@ class FormDataComponent extends Component {
 		} else if (!empty($callResult)) {
 			$data = $callResult;
 		}
-		if (($data = $this->_checkCaptcha($data)) === false) {
-			$this->_log('CheckCaptcha Failed');
-			$this->_log($data);
-			return false;
-		}
 		return $data;
 	}
 	
@@ -796,24 +791,6 @@ class FormDataComponent extends Component {
 		return $this->RequestHandler->prefers($type);
 	}
 
-	private function _checkCaptcha($data) {
-		$this->_log($data);
-		if (!isset($data[$this->settings['model']])) {
-			return false;
-		}
-		$checkData = $data[$this->settings['model']];
-		$this->_log($checkData);
-		if (!empty($this->controller->Captcha) && is_object($this->controller->Captcha) && empty($checkData['captcha_valid'])) {
-			$checkData = $this->controller->Captcha->validateData($checkData, true);
-			if (isset($checkData['captcha_valid']) && !$checkData['captcha_valid']) {
-				$this->_storedData[$this->settings['model']] = $checkData;
-				return false;
-			}
-		}
-		$data[$this->settings['model']] = $checkData;
-		return $data;
-	}
-	
 	function _log($msg) {
 		$this->_log[] = $msg;
 	}
