@@ -285,11 +285,11 @@ class CrudComponent extends Component {
 		return $this->callControllerMethod('_getFormDefaults');
 	}
 
-	public function getFormElements() {
+	public function getFormElements($id = null) {
 		$formElements = [];
 		if (method_exists($this->controller, '_setFormElements')) {
 			$oViewVars = $this->controller->viewVars;
-			$this->controller->_setFormElements();
+			$this->callControllerMethod('_setFormElements', $id);
 			$formElements = array_diff_key($this->controller->viewVars, $oViewVars);
 		}
 		if ($this->jsonResponse) {
@@ -306,7 +306,7 @@ class CrudComponent extends Component {
  * @param array $list;
  * @return array;
  **/
-	private function wrapList($list) {
+	public function wrapList($list) {
 		if (is_array($list)) {
 			$newList = [];
 			foreach ($list as $key => $v) {
@@ -319,7 +319,7 @@ class CrudComponent extends Component {
 
 	private function wrapListChildren($list) {
 		foreach ($list as $k => $v) {
-			$list[$k] = $this->WrapList($v);
+			$list[$k] = $this->wrapList($v);
 		}
 		return $list;
 	}
@@ -763,11 +763,14 @@ class CrudComponent extends Component {
 					!empty($result),
 					Router::url($redirect, true),
 					$this->Model->id,
+					(array) $validationErrorList,
 					Hash::merge(
+						['Data' => (array) $data],
 						['Log' => (array) $this->getLog()],
 						['Errors' => (array) $this->_errors], 
 						['Save' => (array) $saveErrors], 
 						['Validation' => (array) $validationErrorList], 
+						['Validation2' => (array) $validationErrors],
 						['Model: ' . $this->Model->alias]
 					)
 				);
@@ -1030,6 +1033,7 @@ class CrudComponent extends Component {
 	}
 
 	private function _getValidationErrorList() {
+		/*
 		$models = ClassRegistry::keys();
 		$validationErrors = array();
 		foreach ($models as $currentModel) {
@@ -1039,10 +1043,23 @@ class CrudComponent extends Component {
 
 			}
 		}
+		*/
+		$validationErrors = $this->Model->validationErrors;
 		if (empty($validationErrors)) {
 			return '';
 		}
-		return Hash::flatten($validationErrors);		
+		// Flattens the error list
+		$flattened = Hash::flatten($validationErrors);
+		$validationErrors = [];
+		// Un-flattens the deepest level of numeric keys
+		foreach ($flattened as $k => $v) {
+			if (preg_match('/(.*?)\.([0-9]+)$/', $k, $matches)) {
+				$validationErrors[$matches[1]][$matches[2]] = $v;
+			} else {
+				$validationErrors[$k] = $v;
+			}
+		}
+		return $validationErrors;
 	}
 
 /**
