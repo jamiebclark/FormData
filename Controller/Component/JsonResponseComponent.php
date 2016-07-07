@@ -20,11 +20,11 @@ class JsonResponseComponent extends Component {
  * @param bool $success Whether the referenced action was successful or not
  * @param string $redirect The url to redirect
  * @param int $id If present, the id of the referenced model
- * @param array $errors Any errors encountered while trying to complete the action
+ * @param array $validationErrors Any errors encountered while trying to complete the action
  * @return string A JSON-encoded list of data
  **/
-	public function respond($message, $success = true, $redirect = null, $id = null, $errors = array()) {
-		$this->_render($this->response($message, $success, $redirect, $id, $errors));
+	public function respond($message, $success = true, $redirect = null, $id = null, $validationErrors = array(), $debug = []) {
+		$this->_render($this->response($message, $success, $redirect, $id, $validationErrors, $debug));
 	}
 
 
@@ -35,10 +35,10 @@ class JsonResponseComponent extends Component {
  * @param bool $success Whether the referenced action was successful or not
  * @param string $redirect The url to redirect
  * @param int $id If present, the id of the referenced model
- * @param array $errors Any errors encountered while trying to complete the action
+ * @param array $validationErrors Any errors encountered while trying to complete the action
  * @return string A JSON-encoded list of data
  **/
-	public function response($message, $success = true, $redirect = null, $id = null, $errors = array()) {
+	public function response($message, $success = true, $redirect = null, $id = null, $validationErrors = array(), $debug = []) {
 		if (is_array($message)) {
 			$vars = $message;
 		} else {
@@ -47,7 +47,8 @@ class JsonResponseComponent extends Component {
 				'success' => $success,
 				'url' => $redirect,
 				'id' => $id,
-				'validation_errors' => $errors
+				'validation_errors' => $validationErrors,
+				'debug' => $debug
 			);
 		}
 
