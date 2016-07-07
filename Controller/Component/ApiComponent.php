@@ -83,7 +83,7 @@ class ApiComponent extends Component {
 					$this->Crud->update($pass[0]);
 				} else {
 					$this->JsonResponse->set([
-						'formElements' => $this->Crud->getFormElements(),
+						'formElements' => $this->Crud->getFormElements($pass[0]),
 						'data' => $this->Crud->read($pass[0]),
 					]);
 				}
