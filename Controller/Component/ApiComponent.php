@@ -38,6 +38,20 @@ class ApiComponent extends Component {
 		if ($params['prefix']) {
 			$action = substr($action, strlen($params['prefix']) + 1);
 		}
+
+		$headers = getallheaders();
+		$message = "";
+
+		$message = "HEADERS ===========\n";
+		foreach ($headers as $k => $v) {
+			$message .= "$k: $v\n";
+		}
+
+		$message .= "CONTENT ============\n";
+		$message .= print_r($_POST, true);
+		
+		//mail('jamie@souperbowl.org', 'CHECK', $message);
+
 		if (!method_exists($controller, $method) && ($response = $this->mapAction($action))) {
 			$this->JsonResponse->output();
 		}
