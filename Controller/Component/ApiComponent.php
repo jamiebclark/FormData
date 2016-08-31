@@ -109,8 +109,8 @@ class ApiComponent extends Component {
 				$this->Crud->delete($pass[0]);
 			break;
 			case 'index':
-				$varName = Inflector::pluralize($this->Crus->modelVariable);
-				$result = $this->paginate();
+				$varName = Inflector::pluralize($this->Crud->modelVariable);
+				$result = $this->controller->paginate();
 				$this->JsonResponse->set($varName, $result);
 			break;
 		endswitch;
