@@ -89,7 +89,9 @@ class JsonResponseComponent extends Component {
 	}
 
 	private function _render($content) {
-		header('Content-Type: application/json');
+		header('Cache-Control: no-cache, must-revalidate');
+		header('Expires: Mon, 26 Jul 1997 05:00:00 GMT');
+		header('Content-Type:application/json;charset=utf-8');
 		echo $content;
 		exit();
 	}
