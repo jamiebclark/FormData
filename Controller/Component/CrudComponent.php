@@ -1029,6 +1029,7 @@ class CrudComponent extends Component {
  **/
 	private function _getValidationErrors() {
 		$validationErrors = $this->_getValidationErrorList();
+		$validationErrors = Hash::flatten($validationErrors);
 		return "<ul><li>" . implode('</li><li>', $validationErrors) . "</li></ul>";
 	}
 
@@ -1051,6 +1052,7 @@ class CrudComponent extends Component {
 		// Flattens the error list
 		$flattened = Hash::flatten($validationErrors);
 		$validationErrors = [];
+
 		// Un-flattens the deepest level of numeric keys
 		foreach ($flattened as $k => $v) {
 			if (preg_match('/(.*?)\.([0-9]+)$/', $k, $matches)) {
