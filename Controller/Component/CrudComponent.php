@@ -198,9 +198,8 @@ class CrudComponent extends Component {
 		$this->modelPlugin = $plugin;
 
 		if (!($this->Model = ClassRegistry::init($modelClass, true))) {
-			throw new Exception("Could not set model: $modelClass");
+			// throw new Exception("Could not set model: $modelClass");
 		}
-
 	}
 
 	public function beforeFilter(Controller $controller) {
