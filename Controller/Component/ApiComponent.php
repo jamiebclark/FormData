@@ -84,7 +84,7 @@ class ApiComponent extends Component {
 			break;
 			case 'add':
 				if ($isPost) {
-					$this->Crud->create();
+					$this->Crud->create([], [], ['deep' => true]);
 				} else {
 					$this->JsonResponse->set([
 						'formElements' => $this->Crud->getFormElements(),
