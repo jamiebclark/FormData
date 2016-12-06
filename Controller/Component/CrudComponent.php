@@ -1,5 +1,6 @@
 <?php
 App::uses('Hash', 'Utility');
+App::uses('CakeLog', 'Log');
 
 class CrudComponent extends Component {
 	public $name = 'Crud';
@@ -739,6 +740,23 @@ class CrudComponent extends Component {
 			$state = $result ? 'success' : 'fail';
 			$use = $options[$state] + array('message' => null, 'redirect' => null);
 			
+			if (!$result) {
+				$error = ['FormData.Crud save error'];
+				if (!empty($validationErrorList)) {
+					$error[] = 'Invalid Fields:';
+					foreach ($validationErrorList as $field => $rules) {
+						foreach ($rules as $rule) {
+							$error[] = " - $field: $rule";
+						}
+					}
+				}
+				if (!empty($saveErrors)) {
+					$error[] = 'Save Errors:';
+					$error[] = implode("\n - ", $saveErrors);
+				}
+				CakeLog::write('FormData_invalid', implode("\n", $error));
+			}
+
 			$message = $this->getPostSave($state, 'message', $use['message']);
 			$redirect = $this->getPostSave($state, 'redirect', $use['redirect']);
 
