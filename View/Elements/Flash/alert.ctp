@@ -14,7 +14,7 @@ if (empty($class)) {
 
 ?>
 <div id="formdata-alert" class="alert <?php echo $class; ?>">
-	<?php echo $message; ?>
+	<?php echo $this->element('FormData.Flash/alert/message', compact('message')); ?>
 </div>
 
 <?php $this->Html->scriptStart(array('inline' => false)); ?>
