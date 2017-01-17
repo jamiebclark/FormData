@@ -354,7 +354,7 @@ class CrudComponent extends Component {
  * Saves new request data
  *
  * @param array $options create options, including default values to be passed to the form
- * @param array $saveAttrs FormData->save options
+ * @param array $saveAttrs Crud->save options
  * @param array $saveOptions Model->save options
  * @return array Model result
  */
@@ -492,11 +492,12 @@ class CrudComponent extends Component {
 		$options = array_merge(array(
 			'read' => array(),
 			'save' => array(),
+			'saveOptions' => [],
 			'query' => array(),
 		), $options);
 		extract($options);
 
-		$result = $this->save($save);
+		$result = $this->save($save, $saveOptions);
 
 		if ($result === null) {
 			$data = $this->readData($id, $read, $query);
@@ -510,6 +511,24 @@ class CrudComponent extends Component {
 		$this->setFormElements($id);
 		$this->formRender(isset($read['view']) ? $read['view'] : null);
 		return $result;
+	}
+
+/**
+ * Accepts either a single numeric value, a comma separated list of values, or an array of values
+ *
+ * @param string|int|array $id The mixed id values
+ * @return array An array of the id values
+ **/
+	public function getIds($id) {
+		$ids = [];
+		if (is_array($id)) {
+			$ids = $id;
+		} else if (strpos($id, ',')) {
+			$ids = explode(',', $id);
+		} else if (is_numeric($id)) {
+			$ids = [$id];
+		}
+		return $ids;
 	}
 
 /**
@@ -541,16 +560,32 @@ class CrudComponent extends Component {
 			$successRedirect = $defaultUrl;
 		}
 
-		$result = $this->Model->read(array($this->Model->primaryKey, $this->Model->displayField), $id);
+		$ids = $this->getIds($id);
+
+		if (count($ids) == 1) {
+			$label = 'id #' . $ids[0];
+		} else {
+			$label = 'ids #' . implode(',', $ids);
+		}
+
+		$result = $this->Model->find('all', [
+			'fields' => [$this->Model->primaryKey, $this->Model->displayField],
+			'conditions' => [
+				$this->Model->escapeField() => $ids,
+			]
+		]);
 
 		$default = array(
+			'callbacks' => true,
+			'cascade' => true,
+
 			'success' => array(
-				'message' => 'Successfully deleted id #' . $id,
+				'message' => 'Successfully deleted ' . $label,
 				'type' => self::SUCCESS,
 				'redirect' => $successRedirect,
 			),
 			'fail' => array(
-				'message' => 'There was an error deleting id #' . $id,
+				'message' => 'There was an error deleting ' . $label,
 				'type' => self::ERROR,
 				'redirect' => true,
 			),
@@ -561,19 +596,25 @@ class CrudComponent extends Component {
 			)
 		);
 
+		/*
 		if (!empty($result) && !empty($result[$this->Model->alias][$this->Model->displayField])) {
 			$default['success']['message'] = sprintf('Successfully deleted %s "%s"', 
 				$this->Model->alias,
 				$result[$this->Model->alias][$this->Model->displayField]
 			);
 		}
+		*/
 
 		$options = Hash::merge($default, $options);
 
-		if (empty($id) || empty($result)) {
+		if (empty($ids) || empty($result)) {
 			extract($options['notFound']);
 		} else {
-			if ($success = $this->Model->delete($id)) {
+			if ($success = $this->Model->deleteAll(
+					[$this->Model->escapeField() => $ids], 
+					$options['cascade'], 
+					$options['callbacks']
+			)) {
 				extract($options['success']);
 			} else {
 				extract($options['fail']);
@@ -701,15 +742,42 @@ class CrudComponent extends Component {
 			if (($data = $this->beforeSaveData($data, $saveOptions)) !== false) {
 				// Saves data
 				try {
-					if (!empty($data[$alias]) && count($data) == 1) {
-						if (!empty($data[$alias][0])) {
-							$result = $this->Model->save($data[$alias], $saveOptions);
-						} else {
-							$result = $this->Model->saveAll($data[$alias], $saveOptions);
+
+					$deadlockRetries = 4;
+					$deadlockPause = 1;
+
+					for ($i = 0; $i < $deadlockRetries; $i++):
+						$retry = false;
+						try {
+							// Saves data
+							if (!empty($data[$alias]) && count($data) == 1) {
+								if (!empty($data[$alias][0])) {
+									$result = $this->Model->save($data[$alias], $saveOptions);
+								} else {
+									$result = $this->Model->saveAll($data[$alias], $saveOptions);
+								}
+							} else {
+								$result = $this->Model->saveAll($data, $saveOptions);
+							}
+						} catch (PDOException $e) {
+							// Checks for a possible deadlock in reporting
+							$message = $e->getMessage();
+							if (strpos($message, 'Deadlock') !== false) {
+								// If a deadlock is found, wait a second and try again
+								CakeLog::write('error', 
+									sprintf('Found a deadlock reporting for Collection #%d Retrying: ', $id, $message)
+								);
+								sleep($deadlockPause);
+								$retry = true;
+							} else {
+								throw $e;
+							}			
 						}
-					} else {
-						$result = $this->Model->saveAll($data, $saveOptions);
-					}
+						if (!$retry) {
+							break;
+						}
+					endfor;
+
 					$created = !empty($data[$alias]) ? empty($data[$alias][$primaryKey]) : empty($data[$primaryKey]);
 				} catch (Exception $e) {
 					if (true || $this->jsonResponse) {

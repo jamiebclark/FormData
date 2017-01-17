@@ -52,10 +52,25 @@ class ApiComponent extends Component {
 		
 		//mail('jamie@souperbowl.org', 'CHECK', $message);
 
-		if (!method_exists($controller, $method) && ($response = $this->mapAction($action))) {
-			$this->JsonResponse->output();
+		if (!method_exists($controller, $method)) {
+			$this->jsonActionResponse($action);
 		}
+
 		return parent::initialize($controller);
+	}
+
+/**
+ * If the passed action is available to mapAction, send a JSON response. Otherwise ignore
+ *
+ * @param string $action The action
+ * @return mixed The JSON response if available. False otherwise.
+ **/
+	public function jsonActionResponse($action) {
+		if ($response = $this->mapAction($action)) {
+			return $this->JsonResponse->output();
+		} else {
+			return false;
+		}
 	}
 
 /**
@@ -74,6 +89,7 @@ class ApiComponent extends Component {
 		$isPost = $request->is('post');
 
 		$this->Crud->jsonReponse = true;
+
 
 		switch ($action):
 			case 'get_form_defaults':
@@ -106,7 +122,11 @@ class ApiComponent extends Component {
 				$this->JsonResponse->set($this->Crud->read($pass[0]));
 			break;
 			case 'delete':
-				$this->Crud->delete($pass[0]);
+				$options = [];
+				if (array_key_exists('callbacks', $request->named)) {
+					$options['callbacks'] = $request->named['callbacks'];
+				}
+				$this->Crud->delete($pass[0], $options);
 			break;
 			case 'index':
 				$varName = Inflector::pluralize($this->Crud->modelVariable);
@@ -115,6 +135,10 @@ class ApiComponent extends Component {
 			break;
 		endswitch;
 		$json = $this->JsonResponse->get();
+
+		debug(compact('action', 'pass', 'json'));
+		exit();
+
 		return !empty($json) ? $json : false;
 	}
 }
