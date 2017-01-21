@@ -135,10 +135,6 @@ class ApiComponent extends Component {
 			break;
 		endswitch;
 		$json = $this->JsonResponse->get();
-
-		debug(compact('action', 'pass', 'json'));
-		exit();
-
 		return !empty($json) ? $json : false;
 	}
 }
