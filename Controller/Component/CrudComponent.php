@@ -464,13 +464,15 @@ class CrudComponent extends Component {
 		return $result;
 	}
 
-	protected function readData($id, $read, $query) {
+	protected function readData($id, $read, $query, $convertHabtm = true) {
 		$data = $this->read($id, $read, $query);
 		// Converts any HABTM data into an array of only the IDs
-		foreach ($this->Model->hasAndBelongsToMany as $associated => $joins) {
-			if (!empty($data[$associated][0][$this->Model->primaryKey])) {
-				$ids = Hash::extract($data, $associated . '.{n}.' . $this->Model->primaryKey);
-				$data[$associated] = array($associated => $ids);
+		if($convertHabtm) {
+			foreach ($this->Model->hasAndBelongsToMany as $associated => $joins) {
+				if (!empty($data[$associated][0][$this->Model->primaryKey])) {
+					$ids = Hash::extract($data, $associated . '.{n}.' . $this->Model->primaryKey);
+					$data[$associated] = array($associated => $ids);
+				}
 			}
 		}
 		return $data;
@@ -494,13 +496,14 @@ class CrudComponent extends Component {
 			'save' => array(),
 			'saveOptions' => [],
 			'query' => array(),
+			'convertHabtm' => true,
 		), $options);
 		extract($options);
 
 		$result = $this->save($save, $saveOptions);
 
 		if ($result === null) {
-			$data = $this->readData($id, $read, $query);
+			$data = $this->readData($id, $read, $query, $convertHabtm);
 			$this->request->data = $data;
 		} else {
 			if (!empty($this->request->data[$this->modelClass]['id'])) {
