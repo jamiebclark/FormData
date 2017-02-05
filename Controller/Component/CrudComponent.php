@@ -759,7 +759,7 @@ class CrudComponent extends Component {
 								} else {
 									$result = $this->Model->saveAll($data[$alias], $saveOptions);
 								}
-							} else {
+							} else {	
 								$result = $this->Model->saveAll($data, $saveOptions);
 							}
 						} catch (PDOException $e) {
@@ -768,7 +768,7 @@ class CrudComponent extends Component {
 							if (strpos($message, 'Deadlock') !== false) {
 								// If a deadlock is found, wait a second and try again
 								CakeLog::write('error', 
-									sprintf('Found a deadlock reporting for Collection #%d Retrying: ', $id, $message)
+									sprintf('Found a deadlock. Retrying: $message', $message)
 								);
 								sleep($deadlockPause);
 								$retry = true;
