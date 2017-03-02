@@ -1,1 +1,1 @@
-<?php echo $this->element('FormData.Flash/alert', ['class' => 'alert-error'] + compact('element', 'class', 'params', 'message'));
+<?php echo $this->element('FormData.Flash/alert', ['class' => 'alert-danger'] + compact('element', 'class', 'params', 'message'));
