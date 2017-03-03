@@ -365,7 +365,7 @@ class CrudComponent extends Component {
 			$options['default'] = Hash::merge($default, (array) $oDefault);
 		}
 		if ($result === null && !empty($options['default'])) {
-			$this->setData($options['default'], true);
+			$result = $this->setData($options['default'], true);
 		}		
 		$this->setFormElements();
 		$view = isset($options['view']) ? $options['view'] : null;
@@ -501,13 +501,13 @@ class CrudComponent extends Component {
 		extract($options);
 
 		$result = $this->save($save, $saveOptions);
-
 		if ($result === null) {
 			$data = $this->readData($id, $read, $query, $convertHabtm);
 			$this->request->data = $data;
+			$result = $data;
 		} else {
 			if (!empty($this->request->data[$this->modelClass]['id'])) {
-				$this->read($this->request->data[$this->modelClass]['id'], $read, $query);
+				$result = $this->read($this->request->data[$this->modelClass]['id'], $read, $query);
 			}
 		}
 
