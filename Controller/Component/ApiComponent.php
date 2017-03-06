@@ -39,19 +39,6 @@ class ApiComponent extends Component {
 			$action = substr($action, strlen($params['prefix']) + 1);
 		}
 
-		$headers = getallheaders();
-		$message = "";
-
-		$message = "HEADERS ===========\n";
-		foreach ($headers as $k => $v) {
-			$message .= "$k: $v\n";
-		}
-
-		$message .= "CONTENT ============\n";
-		$message .= print_r($_POST, true);
-		
-		//mail('jamie@souperbowl.org', 'CHECK', $message);
-
 		if (!method_exists($controller, $method)) {
 			$this->jsonActionResponse($action);
 		}
@@ -135,6 +122,10 @@ class ApiComponent extends Component {
 			break;
 		endswitch;
 		$json = $this->JsonResponse->get();
-		return !empty($json) ? $json : false;
+		if (empty($json) || empty($json['_serialize'])) {
+			return false;
+		} else {
+			return $json;
+		}
 	}
 }
