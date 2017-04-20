@@ -21,15 +21,9 @@ class SluggableBehavior extends ModelBehavior {
 	}
 
 	public function beforeFind(Model $Model, $query = array()) {
-		$settings = $this->settings[$Model->alias];
-
 		// Searches by either the slug or the id
 		if (!empty($query['slug'])) {
-			if (is_numeric($query['slug'])) {
-				$query['conditions'][$Model->primaryKey] = $query['slug'];
-			} else {
-				$query['conditions'][$Model->escapeField($settings['slugField'])] = $query['slug'];
-			}
+			$query = $this->setFindSlugQuery($query['slug'], $query);
 			unset($query['slug']);
 			return $query;
 		}
@@ -56,6 +50,29 @@ class SluggableBehavior extends ModelBehavior {
 	}
 
 /**
+ * Retrieves the ID based on a slug
+ *
+ * @param Model $Model The model obejct
+ * @param string|int $slug The slug we are searching. It can also be an ID to anticipate testing
+ * @return int|null Either the associated ID or null
+ **/
+	public function findIdBySlug(Model $Model, $slug) {
+		if (is_numeric($slug)) {
+			return $slug;
+		}
+		$result = $Model->find('first', 
+			$this->setFindSlugQuery($Model, $slug, [
+				'fields' => [$Model->primaryKey],
+			])
+		);
+		if (empty($result)) {
+			return null;
+		}
+		return $result[$Model->alias][$Model->primaryKey];
+	}
+
+
+/**
  * Sets the slug of a row based on the displayField
  *
  * @param Model $Model The model obejct
@@ -65,10 +82,10 @@ class SluggableBehavior extends ModelBehavior {
 	public function setSlug(Model $Model, $id) {
 		$settings = $this->settings[$Model->alias];
 		$slug = $this->getSlug($Model, $id);
-		return $Model->save(array(
+		return $Model->save([
 			$Model->primaryKey => $id,
 			$settings['slugField'] => $slug,
-		), array('callbacks' => false, 'validate' => false));
+		], ['callbacks' => false, 'validate' => false]);
 	}
 
 /**
@@ -135,5 +152,23 @@ class SluggableBehavior extends ModelBehavior {
  **/
 	protected function inflectSlug($text) {
 		return Inflector::slug($text);
+	}
+
+/**
+ * Adds a condition to a find query searching by slug
+ *
+ * @param Model $Model The model obejct
+ * @param string|int $slug The slug we are searching. It can also be an ID to anticipate testing
+ * @param array $query An existing query parameters
+ * @return array The updated query 
+ **/
+	protected function setFindSlugQuery(Model $Model, $slug, $query = []) {
+		$settings = $this->settings[$Model->alias];
+		if (is_numeric($slug)) {
+			$query['conditions'][$Model->primaryKey] = $slug;
+		} else {
+			$query['conditions'][$Model->escapeField($settings['slugField'])] = $slug;
+		}
+		return $query;
 	}
 }
