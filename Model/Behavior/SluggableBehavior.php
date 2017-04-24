@@ -23,7 +23,7 @@ class SluggableBehavior extends ModelBehavior {
 	public function beforeFind(Model $Model, $query = array()) {
 		// Searches by either the slug or the id
 		if (!empty($query['slug'])) {
-			$query = $this->setFindSlugQuery($query['slug'], $query);
+			$query = $this->setFindSlugQuery($Model, $query['slug'], $query);
 			unset($query['slug']);
 			return $query;
 		}
