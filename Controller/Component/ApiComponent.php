@@ -6,7 +6,7 @@
 class ApiComponent extends Component {
 	public $components = [
 		'FormData.Crud' => [
-			'respond' => 'json',
+			'respond' => 'json'
 		], 
 		'FormData.JsonResponse',
 	];
@@ -77,7 +77,6 @@ class ApiComponent extends Component {
 
 		$this->Crud->jsonReponse = true;
 
-
 		switch ($action):
 			case 'get_form_defaults':
 				$this->JsonResponse->set($this->Crud->getFormDefaults());
@@ -107,6 +106,10 @@ class ApiComponent extends Component {
 			break;
 			case 'view':
 				$this->JsonResponse->set($this->Crud->read($pass[0]));
+			break;
+			case 'validate':
+				$this->Crud->jsonResponse = true;
+				$this->Crud->validate();
 			break;
 			case 'delete':
 				$options = [];

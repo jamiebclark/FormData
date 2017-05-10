@@ -193,7 +193,7 @@ class CrudComponent extends Component {
 
 		$this->modelClass = $model;
 
-		$controller = Inflector::tableize($this->model);
+		$controller = Inflector::tableize($model);
 		$this->modelVariable = Inflector::variable($model);
 		$this->modelHuman = Inflector::humanize(Inflector::singularize($controller));
 		$this->modelPlugin = $plugin;
@@ -652,6 +652,52 @@ class CrudComponent extends Component {
 		}
 	}
 	
+	public function validate($data = false) {
+		if ($data === false) {
+			$data = $this->_getData();
+		}
+		$validationErrors = '';
+		$validationErrorList = [];
+		if (!empty($data)) {
+			$this->Model->set($data);
+			if ($this->Model->validates()) {
+				$message = $this->modelHuman . ' is valid';
+				$response = self::SUCCESS;
+			} else {
+				$message = $this->modelHuman . ' is NOT valid';
+				$validationErrors = $this->_getValidationErrors();
+				$validationErrorList = $this->_getValidationErrorList();
+				$response = self::ERROR;
+			}
+		} else {
+			$message = 'No data found. Cannot validate';
+			$response = self::WARNING;
+		}
+
+		// Executes wrapup
+		if ($this->jsonResponse) {
+			// Only outputs JSON if call was AJAX
+			$this->JsonResponse->respond(
+				$message,
+				$response,
+				false,
+				false,
+				(array) $validationErrorList,
+				Hash::merge(
+					['Data' => (array) $data],
+					['Log' => (array) $this->getLog()],
+					['Errors' => (array) $this->_errors], 
+					['Save' => []], 
+					['Validation' => (array) $validationErrorList], 
+					['Validation2' => (array) $validationErrors],
+					['Model: ' . $this->Model->alias]
+				)
+			);
+		} else {
+			$this->flash($message . $validationErrors, $response);
+		}
+	}
+
 /**
  * Handles the basic code appearing at the top of any add or edit controller function
  * returns true if successfully saved, false if failed at saving, null if no data is detected
@@ -719,30 +765,10 @@ class CrudComponent extends Component {
 		$saveErrors = [];
 
 		// Checks for passed data
-		if (!empty($this->request->data)) {
-			$data =& $this->request->data;
+		if ($this->_hasData()) {
 			$result = false;
-			$this->_storedData = $data;
-
-
-			// HABTM Updates
-			foreach ($this->Model->hasAndBelongsToMany as $associated => $join) {
-				if (!empty($data[$associated][$associated])) {
-					// Removes blank values
-					foreach ($data[$associated][$associated] as $key => $val) {
-						if (empty($val) || is_array($val)) {
-							unset($data[$associated][$associated][$key]);
-						}
-					}
-					// De-dups the ids
-					if (!empty($data[$associated][$associated])) {
-						$data[$associated][$associated] = array_keys(array_flip($data[$associated][$associated]));
-					}
-				}
-			}
-
 			// Before save
-			if (($data = $this->beforeSaveData($data, $saveOptions)) !== false) {
+			if (($data = $this->_getData($saveOptions)) !== false) {
 				// Saves data
 				try {
 
@@ -802,8 +828,6 @@ class CrudComponent extends Component {
 					$validationErrorList = $this->_getValidationErrorList();
 				}
 			} else {
-				$result = false;
-				$this->_log('FormData beforeSaveData failed');
 				$data = $this->_storedData;
 			}
 			
@@ -872,6 +896,38 @@ class CrudComponent extends Component {
 			return $result ? true : false;
 		}
 		return null;
+	}
+
+	protected function _hasData() {
+		return !empty($this->request->data);
+	}
+
+	protected function _getData($saveOptions = []) {
+		$data =& $this->request->data;
+		$this->_storedData = $data;
+	
+		// HABTM Updates
+		foreach ($this->Model->hasAndBelongsToMany as $associated => $join) {
+			if (!empty($data[$associated][$associated])) {
+				// Removes blank values
+				foreach ($data[$associated][$associated] as $key => $val) {
+					if (empty($val) || is_array($val)) {
+						unset($data[$associated][$associated][$key]);
+					}
+				}
+				// De-dups the ids
+				if (!empty($data[$associated][$associated])) {
+					$data[$associated][$associated] = array_keys(array_flip($data[$associated][$associated]));
+				}
+			}
+		}	
+
+		// Before Save
+		if (($data = $this->beforeSaveData($data, $saveOptions)) === false) {
+			$this->_log('FormData beforeSaveData failed');
+			return false;
+		}
+		return $data;
 	}
 
 	public function resultToData($result, $attrs = array()) {
@@ -1117,6 +1173,12 @@ class CrudComponent extends Component {
  **/
 	private function _getValidationErrors() {
 		$validationErrors = $this->_getValidationErrorList();
+		if (empty($validationErrors)) {
+			return "";
+		}
+		if (!is_array($validationErrors)) {
+			$validationErrors = [$validationErrors];
+		}
 		$validationErrors = Hash::flatten($validationErrors);
 		return "<ul><li>" . implode('</li><li>', $validationErrors) . "</li></ul>";
 	}
